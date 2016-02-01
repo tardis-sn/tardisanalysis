@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+"""A simple plotting tool to create spectral diagnostics plots similar to those
+originally proposed by M. Kromer (see, for example, Kromer et al. 2013, figure
+4).
+"""
 from tardis import run_tardis
 import yaml
 import numpy as np
