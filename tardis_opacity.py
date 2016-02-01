@@ -7,7 +7,7 @@
 #
 #  Creation Date : 28-01-2016
 #
-#  Last Modified : Mon 01 Feb 2016 15:43:14 CET
+#  Last Modified : Mon 01 Feb 2016 16:00:23 CET
 #
 #  Created By : U.M.Noebauer
 #
@@ -24,12 +24,12 @@ compatibility is guaranteed!
 """
 import logging
 import numpy as np
-import pandas as pd
 import astropy.units as units
 import astropy.constants as csts
 from astropy.analytic_functions import blackbody_nu
 
 logger = logging.getLogger(__name__)
+
 
 class opacity_calculator(object):
     """Basic Tardis opacity and optical depth calculator
@@ -141,8 +141,9 @@ class opacity_calculator(object):
     @bin_scaling.setter
     def bin_scaling(self, val):
         allowed_values = ["log", "linear"]
-        if not val in allowed_values:
-            raise ValueError("wrong bin_scaling; must be among {:s}".format(", ".join(allowed_values)))
+        if val not in allowed_values:
+            raise ValueError("wrong bin_scaling; must be "
+                             "among {:s}".format(",".join(allowed_values)))
         self._reset_bins()
         self._bin_scaling = val
 
@@ -218,7 +219,9 @@ class opacity_calculator(object):
             nu_max = self.lam_min.to("Hz", equivalencies=units.spectral())
             nu_min = self.lam_max.to("Hz", equivalencies=units.spectral())
             if self.bin_scaling == "log":
-                nu_bins = np.logspace(np.log10(nu_min.value), np.log10(nu_max.value), self.nbins+1) * units.Hz
+                nu_bins = (np.logspace(np.log10(nu_min.value),
+                                       np.log10(nu_max.value), self.nbins+1) *
+                           units.Hz)
             elif self.bin_scaling == "linear":
                 nu_bins = np.linspace(nu_min, nu_max, self.nbins+1)
             self._nu_bins = nu_bins
@@ -288,7 +291,8 @@ class opacity_calculator(object):
 
         The expansion opacity formalism, in the particular version of Blinnikov
         et al. 1998, is used. In the supernova ejecta case (assuming perfect
-        homologous expansion), the formula for the expansion opacity in the interval $[\nu, \nu+\Delta \nu]$ simplifies to
+        homologous expansion), the formula for the expansion opacity in the
+        interval $[\nu, \nu+\Delta \nu]$ simplifies to
         \[
           \chi_{\mathrm{exp}} = \frac{\nu}{\Delta \nu} \frac{1}{c t} \sum_j
           \left(1 - \exp(-\tau_{\mathrm{S},j})\right)
@@ -301,7 +305,8 @@ class opacity_calculator(object):
             expansion opacity array (shape Nbins x Nshells)
         """
 
-        line_waves = self.mdl.atom_data.lines.ix[self.mdl.plasma_array.tau_sobolevs.index]
+        index = self.mdl.plasma_array.tau_sobolevs.index
+        line_waves = self.mdl.atom_data.lines.ix[index]
         line_waves = line_waves.wavelength.values * units.AA
 
         kappa_exp = np.zeros((self.nbins, self.nshells)) / units.cm
@@ -313,8 +318,11 @@ class opacity_calculator(object):
 
             mask = np.argwhere((line_waves > lam_low) * (line_waves <
                                                          lam_up)).ravel()
-            tmp = (1 - np.exp(-self.mdl.plasma_array.tau_sobolevs.iloc[mask])).sum().values
-            kappa_exp[i,:] = tmp * self.nu_bins[i] / (self.nu_bins[i+1] - self.nu_bins[i]) / (csts.c * self.t_exp)
+            taus = self.mdl.plasma_array.tau_sobolevs.iloc[mask]
+            tmp = np.sum(1 - np.exp(-taus)).values
+            kappa_exp[i, :] = (tmp * self.nu_bins[i] / (self.nu_bins[i+1] -
+                                                        self.nu_bins[i]) /
+                               (csts.c * self.t_exp))
 
         return kappa_exp.to("1/cm")
 
@@ -345,7 +353,7 @@ class opacity_calculator(object):
             logger.info("setting electron density units by hand (cm^-3)")
             edens = edens / units.cm**3
 
-        kappa_thom =  edens * sigma_T
+        kappa_thom = edens * sigma_T
 
         return kappa_thom.to("1/cm")
 
@@ -367,7 +375,8 @@ class opacity_calculator(object):
             delta_nu = (self.nu_bins[1:] - self.nu_bins[:-1])
             T = self.mdl.plasma_array.t_rad[i]
 
-            tmp = (blackbody_nu(self.nu_bins[:-1], T) * delta_nu * self.kappa_tot[:,0]).sum()
+            tmp = (blackbody_nu(self.nu_bins[:-1], T) * delta_nu *
+                   self.kappa_tot[:, 0]).sum()
             tmp /= (blackbody_nu(self.nu_bins[:-1], T) * delta_nu).sum()
 
             kappa_planck_mean[i] = tmp
