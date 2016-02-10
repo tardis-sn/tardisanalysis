@@ -285,7 +285,7 @@ class tardis_kromer_plotter(object):
             tmp = self.mdl.runner
             tmp = ((tmp.virt_packet_last_line_interaction_in_id == -1) *
                    (self.escat_mask)).astype(np.bool)
-            self._escatonly_mask = self._escatonly_mask / tmp
+            self._escatonly_mask = tmp
         return self._escatonly_mask
 
     @property
