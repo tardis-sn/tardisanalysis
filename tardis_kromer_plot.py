@@ -136,6 +136,77 @@ class model_h5(object):
             mhdf5["/configuration/"]["time_of_simulation"]
 
 
+class minimal_model(object):
+    def __init__(self, mode="real"):
+
+        allowed_modes = ["real", "virtual"]
+        try:
+            assert(mode in allowed_modes)
+        except AssertionError:
+            msg = "unknown mode '{:s}';".format(mode) + \
+                "allowed modes are {:s}".format(",".join(allowed_modes))
+            raise ValueError(msg)
+
+        self.readin = False
+        self.mode = mode
+        self.lines = None
+        self.last_interaction_type = None
+        self.last_line_interaction_in_id = None
+        self.last_line_interaction_out_id = None
+        self.last_interaction_in_nu = None
+        self.packet_nus = None
+        self.packet_energies = None
+        self.spectrum_wave = None
+        self.spectrum_luminosity = None
+        self.time_of_simulation = None
+
+    def from_interactive(self, mdl):
+
+        self.time_of_simulation = mdl.time_of_simulation
+        self.lines = mdl.atom_data.lines
+        if self.mode == "virtual":
+            self.last_interaction_type = \
+                mdl.runner.virt_packet_last_interaction_type
+            self.last_line_interaction_in_id = \
+                mdl.runner.virt_packet_last_line_interaction_in_id
+            self.last_line_interaction_out_id = \
+                mdl.runner.virt_packet_last_line_interaction_out_id
+            self.last_interaction_in_nu = \
+                mdl.runner.virt_packet_last_interaction_in_nu
+            self.packet_nus = \
+                mdl.runner.virt_packet_nus * units.Hz
+            self.packet_energies = \
+                mdl.runner.virt_packet_energies * units.erg
+            self.spectrum_wave = \
+                mdl.spectrum_virtual.wavelength
+            self.spectrum_luminosity = \
+                mdl.spectrum_virtual.luminosity_density_lambda
+        elif self.mode == "real":
+
+            esc_mask = mdl.runner.output_energy >= 0
+
+            self.last_interaction_type = \
+                mdl.runner.last_interaction_type[esc_mask]
+            self.last_line_interaction_in_id = \
+                mdl.runner.last_line_interaction_in_id[esc_mask]
+            self.last_line_interaction_out_id = \
+                mdl.runner.last_line_interaction_out_id[esc_mask]
+            self.last_interaction_in_nu = \
+                mdl.runner.last_interaction_in_nu[esc_mask]
+            self.packet_nus = \
+                mdl.runner.output_nu[esc_mask]
+            self.packet_energies = \
+                mdl.runner.output_energy[esc_mask]
+            self.spectrum_wave = \
+                mdl.spectrum.wavelength
+            self.spectrum_luminosity = \
+                mdl.spectrum.luminosity_density_lambda
+        else:
+            raise ValueError
+        self.last_interaction_in_nu = self.last_interaction_in_nu * units.Hz
+        self.readin = True
+
+
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.
     Kromer.
@@ -169,7 +240,10 @@ class tardis_kromer_plotter(object):
        of Two Carbon-Oxygen White Dwarfs" ApjL, 2013, 778, L18
 
     """
-    def __init__(self, mdl):
+    def __init__(self, mdl, mode="real"):
+
+        self._mode = None
+        self.mode = mode
 
         self._mdl = None
         self._zmax = 32
@@ -200,6 +274,20 @@ class tardis_kromer_plotter(object):
         self.mdl = mdl
 
     @property
+    def mode(self):
+        """packet mode - use real or virtual packets for plotting"""
+        return self._mode
+
+    @mode.setter
+    def mode(self, val):
+        known_modes = ["real", "virtual"]
+        try:
+            assert(val in known_modes)
+        except AssertionError:
+            raise ValueError("unknown mode")
+        self._mode = val
+
+    @property
     def mdl(self):
         """Tardis model object"""
         return self._mdl
@@ -207,15 +295,16 @@ class tardis_kromer_plotter(object):
     @mdl.setter
     def mdl(self, val):
         try:
-            assert(type(val) == tardis.model.Radial1DModel or type(val) ==
-                   model_h5)
+            assert(type(val) == minimal_model)
         except AssertionError:
-            raise ValueError("'mdl' must be either a model_h5 or a"
-                             " tardis.model.Radia1DModel instance")
+            raise ValueError("'mdl' must be either a minimal_model")
 
-        if val.runner.virt_logging == 0:
-            raise ValueError("Virtual packet logging was deactivated in the"
-                             " input model. Cannot generate Kromer plot")
+        if val.mode != self.mode:
+            raise ValueError("packet mode of minimal_model doesn't"
+                             " match requested mode")
+        if not val.readin:
+            raise ValueError("passing empty minimal_model; read in data first")
+
         self._reset_cache()
         self._mdl = val
 
@@ -265,7 +354,7 @@ class tardis_kromer_plotter(object):
         """Masking array, highlighting the packets that never interacted"""
         if self._noint_mask is None:
             self._noint_mask = \
-                self.mdl.runner.virt_packet_last_interaction_type == -1
+                self.mdl.last_interaction_type == -1
         return self._noint_mask
 
     @property
@@ -274,7 +363,7 @@ class tardis_kromer_plotter(object):
         scatterings"""
         if self._escat_mask is None:
             self._escat_mask = \
-                self.mdl.runner.virt_packet_last_interaction_type == 1
+                self.mdl.last_interaction_type == 1
         return self._escat_mask
 
     @property
@@ -282,8 +371,7 @@ class tardis_kromer_plotter(object):
         """Masking array, highlighting the packets that only performed Thomson
         scatterings"""
         if self._escatonly_mask is None:
-            tmp = self.mdl.runner
-            tmp = ((tmp.virt_packet_last_line_interaction_in_id == -1) *
+            tmp = ((self.mdl.last_line_interaction_in_id == -1) *
                    (self.escat_mask)).astype(np.bool)
             self._escatonly_mask = tmp
         return self._escatonly_mask
@@ -293,10 +381,9 @@ class tardis_kromer_plotter(object):
         """Mask array, highlighting packets whose last interaction was with a
         line"""
         if self._line_mask is None:
-            tmp = self.mdl.runner
             self._line_mask = \
-                ((tmp.virt_packet_last_interaction_type > -1) *
-                 (tmp.virt_packet_last_line_interaction_in_id > -1))
+                ((self.mdl.last_interaction_type > -1) *
+                 (self.mdl.last_line_interaction_in_id > -1))
         return self._line_mask
 
     @property
@@ -305,8 +392,7 @@ class tardis_kromer_plotter(object):
         if self._lam_noint is None:
             self._lam_noint = \
                 (csts.c.cgs /
-                 (self.mdl.runner.virt_packet_nus[self.noint_mask] *
-                  units.Hz)).to(units.AA)
+                 (self.mdl.packet_nus[self.noint_mask])).to(units.AA)
         return self._lam_noint
 
     @property
@@ -315,8 +401,7 @@ class tardis_kromer_plotter(object):
         if self._lam_escat is None:
             self._lam_escat = \
                 (csts.c.cgs /
-                 (self.mdl.runner.virt_packet_nus[self.escatonly_mask] *
-                  units.Hz)).to(units.AA)
+                 (self.mdl.packet_nus[self.escatonly_mask])).to(units.AA)
         return self._lam_escat
 
     @property
@@ -324,8 +409,8 @@ class tardis_kromer_plotter(object):
         """luminosity of the only electron scattering packets"""
         if self._weights_escat is None:
             self._weights_escat = \
-                (self.mdl.runner.virt_packet_energies[self.escatonly_mask] *
-                 units.erg / self.mdl.time_of_simulation)
+                (self.mdl.packet_energies[self.escatonly_mask] /
+                 self.mdl.time_of_simulation)
         return self._weights_escat
 
     @property
@@ -333,31 +418,31 @@ class tardis_kromer_plotter(object):
         """luminosity of the non-interacting packets"""
         if self._weights_noint is None:
             self._weights_noint = \
-                (self.mdl.runner.virt_packet_energies[self.noint_mask] *
-                 units.erg / self.mdl.time_of_simulation)
+                (self.mdl.packet_energies[self.noint_mask] /
+                 self.mdl.time_of_simulation)
         return self._weights_noint
 
     @property
     def line_out_infos(self):
         """Line ids of the transitions packets were emitted last"""
         if self._line_out_infos is None:
-            tmp = self.mdl.runner.virt_packet_last_line_interaction_out_id
+            tmp = self.mdl.last_line_interaction_out_id
             ids = tmp[self.line_mask]
-            self._line_out_infos = self.mdl.atom_data.lines.iloc[ids]
+            self._line_out_infos = self.mdl.lines.iloc[ids]
         return self._line_out_infos
 
     @property
     def line_out_nu(self):
         """frequency of the transitions packets were emitted last"""
         if self._line_out_nu is None:
-            self._line_out_nu = self.mdl.runner.virt_packet_nus[self.line_mask]
+            self._line_out_nu = self.mdl.packet_nus[self.line_mask]
         return self._line_out_nu
 
     @property
     def line_out_L(self):
         """luminosity of the line interaction packets"""
         if self._line_out_L is None:
-            tmp = self.mdl.runner.virt_packet_energies
+            tmp = self.mdl.packet_energies
             self._line_out_L = tmp[self.line_mask]
         return self._line_out_L
 
@@ -365,16 +450,16 @@ class tardis_kromer_plotter(object):
     def line_in_infos(self):
         """Line ids of the transitions packets were last absorbed"""
         if self._line_in_infos is None:
-            tmp = self.mdl.runner.virt_packet_last_line_interaction_in_id
+            tmp = self.mdl.last_line_interaction_in_id
             ids = tmp[self.line_mask]
-            self._line_in_infos = self.mdl.atom_data.lines.iloc[ids]
+            self._line_in_infos = self.mdl.lines.iloc[ids]
         return self._line_in_infos
 
     @property
     def line_in_nu(self):
         """frequencies of the transitions packets were last absorbed"""
         if self._line_in_nu is None:
-            nus = self.mdl.runner.virt_packet_last_interaction_in_nu * units.Hz
+            nus = self.mdl.last_interaction_in_nu
             self._line_in_nu = nus[self.line_mask]
         return self._line_in_nu
 
@@ -382,7 +467,7 @@ class tardis_kromer_plotter(object):
     def line_in_L(self):
         """luminosity of the line interaction packets"""
         if self._line_in_L is None:
-            tmp = self.mdl.runner.virt_packet_energies
+            tmp = self.mdl.packet_energies
             self._line_in_L = tmp[self.line_mask]
         return self._line_in_L
 
@@ -448,7 +533,7 @@ class tardis_kromer_plotter(object):
         self._twinx = twinx
 
         if bins is None:
-            self._bins = self.mdl.spectrum_virtual.wavelength[::-1]
+            self._bins = self.mdl.spectrum_wave[::-1]
         else:
             self._bins = bins
 
@@ -486,9 +571,8 @@ class tardis_kromer_plotter(object):
 
         for zi in xrange(1, self.zmax+1):
             mask = self.line_out_infos.atomic_number.values == zi
-            lams.append((csts.c.cgs / (self.line_out_nu[mask] *
-                                       units.Hz)).to(units.AA))
-            weights.append(self.line_out_L[mask] * units.erg /
+            lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
+            weights.append(self.line_out_L[mask] /
                            self.mdl.time_of_simulation)
             colors.append(self.cmap(float(zi) / float(self.zmax)))
 
@@ -506,8 +590,8 @@ class tardis_kromer_plotter(object):
                 reti.set_linewidth(0)
                 reti.xy[:, 1] *= Lnorm
 
-        self.ax.plot(self.mdl.spectrum_virtual.wavelength,
-                     self.mdl.spectrum_virtual.luminosity_density_lambda,
+        self.ax.plot(self.mdl.spectrum_wave,
+                     self.mdl.spectrum_luminosity,
                      color="blue", drawstyle="steps-post", lw=0.5)
 
     def _generate_absorption_part(self):
@@ -520,7 +604,7 @@ class tardis_kromer_plotter(object):
         for zi in xrange(1, self.zmax+1):
             mask = self.line_in_infos.atomic_number.values == zi
             lams.append((csts.c.cgs / self.line_in_nu[mask]).to(units.AA))
-            weights.append(self.line_in_L[mask] * units.erg /
+            weights.append(self.line_in_L[mask] /
                            self.mdl.time_of_simulation)
             colors.append(self.cmap(float(zi) / float(self.zmax)))
 
