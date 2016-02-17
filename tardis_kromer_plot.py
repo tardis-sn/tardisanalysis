@@ -2,8 +2,8 @@
 originally proposed by M. Kromer (see, for example, Kromer et al. 2013, figure
 4).
 """
-import tardis.model
 import logging
+import os
 import numpy as np
 import pandas as pd
 import astropy.units as units
@@ -27,8 +27,8 @@ elements = {'neut': 0, 'h': 1, 'he': 2, 'li': 3, 'be': 4, 'b': 5, 'c': 6, 'n':
 inv_elements = dict([(v, k) for k, v in elements.items()])
 
 
-def store_data_for_kromer_plot(mdl, lines_fname="lines.hdf5",
-                               model_fname="model.hdf5"):
+def store_data_for_kromer_plot(mdl, buffer_or_fname="minimal_model.hdf5",
+                               path="", mode="virtual"):
     """Simple helper routine to dump all information required to generate a
     kromer plot to hdf5 files.
 
@@ -42,98 +42,111 @@ def store_data_for_kromer_plot(mdl, lines_fname="lines.hdf5",
         name of the hdf5 file for the model data (default 'model.hdf5')
     """
 
-    if mdl.runner.virt_logging != 1:
-        logger.warning("Warning: Tardis has not been compiled with the virtual"
-                       " packet logging feature, which is required to generate"
-                       " Kromer plots. Recompile with the flag "
-                       "'--with-vpacket-logging'")
+    def _save_spectrum_real(key, path, hdf_store):
 
-    mdl.to_hdf5(model_fname)
-    mdl.atom_data.lines.to_hdf(lines_fname, "lines")
+        wave = mdl.spectrum.wavelength.value
+        flux = mdl.spectrum.luminosity_density_lambda.value
 
+        luminosity_density = \
+            pd.DataFrame.from_dict(dict(wave=wave, flux=flux))
+        luminosity_density.to_hdf(hdf_store, os.path.join(path, key))
 
-class atom_data_h5(object):
-    """Simple representation of the atom_data object of Tardis.
+    def _save_spectrum_virtual(key, path, hdf_store):
 
-    Used for model_h5.
+        wave = mdl.spectrum_virtual.wavelength.value
+        flux = mdl.spectrum_virtual.luminosity_density_lambda.value
 
-    Parameters
-    ----------
-    hdf5 : pandas.HDFStore
-        hdf5 file object containing the line list
-    """
-    def __init__(self, hdf5):
-        self.lines = hdf5["lines"]
+        luminosity_density_virtual = pd.DataFrame.from_dict(dict(wave=wave,
+                                                                 flux=flux))
+        luminosity_density_virtual.to_hdf(hdf_store, os.path.join(path, key))
 
+    def _save_configuration_dict(key, path, hdf_store):
+        configuration_dict = dict(time_of_simulation=mdl.time_of_simulation)
+        configuration_dict_path = os.path.join(path, 'configuration')
+        pd.Series(configuration_dict).to_hdf(hdf_store,
+                                             configuration_dict_path)
 
-class runner_h5(object):
-    """Simple representation of the runner object of Tardis.
+    if mode == "virtual":
+        include_from_runner_ = \
+            {'virt_packet_last_interaction_type': None,
+             'virt_packet_last_line_interaction_in_id': None,
+             'virt_packet_last_line_interaction_out_id': None,
+             'virt_packet_last_interaction_in_nu': None,
+             'virt_packet_nus': None,
+             'virt_packet_energies': None}
+        include_from_spectrum_ = \
+            {'luminosity_density_virtual': _save_spectrum_virtual}
+    elif mode == "real":
+        include_from_runner_ = \
+            {'last_interaction_type': None,
+             'last_line_interaction_in_id': None,
+             'last_line_interaction_out_id': None,
+             'last_interaction_in_nu': None,
+             'output_nu': None,
+             'output_energy': None}
+        include_from_spectrum_ = \
+            {'luminosity_density': _save_spectrum_real}
 
-    Used in model_h5.
+    else:
+        raise ValueError
 
-    Parameters
-    ----------
-    hdf5 : pandas.HDFStore
-        hdf5 file object containing the model data
-    """
-    def __init__(self, hdf5):
-        self.virt_packet_last_interaction_type = \
-            hdf5["/runner/virt_packet_last_interaction_type"].values
-        self.virt_packet_last_line_interaction_in_id = \
-            hdf5["/runner/virt_packet_last_line_interaction_in_id"].values
-        self.virt_packet_last_line_interaction_out_id = \
-            hdf5["/runner/virt_packet_last_line_interaction_out_id"].values
-        self.virt_packet_last_interaction_in_nu = \
-            hdf5["/runner/virt_packet_last_interaction_in_nu"].values
-        self.virt_packet_nus = hdf5["/runner/virt_packet_nus"].values
-        self.virt_packet_energies = \
-            hdf5["/runner/virt_packet_energies"].values
-        if len(self.virt_packet_nus) == 0:
-            logger.warning("Warning: hdf5 files do not contain full "
-                           " information" " about virtual packets. Most"
-                           " likely, Tardis was not" " compiled with the flag"
-                           " '--with-vpacket-logging'.")
-            self.virt_logging = 0
+    include_from_atom_data_ = {'lines': None}
+    include_from_model_in_hdf5 = {'runner': include_from_runner_,
+                                  'atom_data': include_from_atom_data_,
+                                  'spectrum': include_from_spectrum_,
+                                  'configuration_dict':
+                                  _save_configuration_dict,
+                                  }
+
+    if isinstance(buffer_or_fname, basestring):
+        hdf_store = pd.HDFStore(buffer_or_fname)
+    elif isinstance(buffer_or_fname, pd.HDFStore):
+        hdf_store = buffer_or_fname
+    else:
+        raise IOError('Please specify either a filename or an HDFStore')
+    logger.info('Writing to path %s', path)
+
+    def _get_hdf5_path(path, property_name):
+        return os.path.join(path, property_name)
+
+    def _to_smallest_pandas(object):
+        try:
+            return pd.Series(object)
+        except Exception:
+            return pd.DataFrame(object)
+
+    def _save_model_property(object, property_name, path, hdf_store):
+        property_path = _get_hdf5_path(path, property_name)
+
+        try:
+            object.to_hdf(hdf_store, property_path)
+        except AttributeError:
+            _to_smallest_pandas(object).to_hdf(hdf_store, property_path)
+
+    for key in include_from_model_in_hdf5:
+        if include_from_model_in_hdf5[key] is None:
+            _save_model_property(getattr(mdl, key), key, path, hdf_store)
+        elif callable(include_from_model_in_hdf5[key]):
+            include_from_model_in_hdf5[key](key, path, hdf_store)
         else:
-            self.virt_logging = 1
+            try:
+                for subkey in include_from_model_in_hdf5[key]:
+                    if include_from_model_in_hdf5[key][subkey] is None:
+                        _save_model_property(getattr(getattr(mdl, key),
+                                                     subkey), subkey,
+                                             os.path.join(path, key),
+                                             hdf_store)
+                    elif callable(include_from_model_in_hdf5[key][subkey]):
+                        include_from_model_in_hdf5[key][subkey](subkey, os.path.join(path, key), hdf_store)
+                    else:
+                        logger.critical('Can not save %s',
+                                        str(os.path.join(path, key, subkey)))
+            except:
+                logger.critical('An error occurred while dumping %s to HDF.',
+                                str(os.path.join(path, key)))
 
-
-class spectrum_h5(object):
-    """Simple representation of the spectrum object of Tardis.
-
-    Used in model_h5.
-
-    Parameters
-    ----------
-    hdf5 : pandas.HDFStore
-        hdf5 file object containing the model data
-    """
-    def __init__(self, hdf5):
-        self.wavelength = (units.Angstrom *
-                           hdf5["luminosity_density_virtual"]["wave"].values)
-        self.luminosity_density_lambda = units.erg / \
-            (units.Angstrom * units.s) * \
-            hdf5["luminosity_density_virtual"]["flux"].values
-
-
-class model_h5(object):
-    """Simple representation of the model object of Tardis.
-
-    This helper object holds all information stored in hdf5 files in a similar
-    fashion to tardis.model.Radial1DModel. This way, the same plotting routine
-    can be used to process the full interactive Tardis model, or the minimal
-    information stored in the hdf5 files.
-    """
-    def __init__(self, model_fname="model.hdf5", lines_fname="lines.hdf5"):
-
-        lhdf5 = pd.HDFStore(lines_fname)
-        mhdf5 = pd.HDFStore(model_fname)
-
-        self.atom_data = atom_data_h5(lhdf5)
-        self.runner = runner_h5(mhdf5)
-        self.spectrum_virtual = spectrum_h5(mhdf5)
-        self.time_of_simulation = \
-            mhdf5["/configuration/"]["time_of_simulation"]
+    hdf_store.flush()
+    hdf_store.close()
 
 
 class minimal_model(object):
@@ -165,6 +178,13 @@ class minimal_model(object):
         self.time_of_simulation = mdl.time_of_simulation
         self.lines = mdl.atom_data.lines
         if self.mode == "virtual":
+
+            if mdl.runner.virt_logging != 1:
+                raise ValueError("Tardis must be compiled with the virtual"
+                                 " packet logging feature if Kromer plots are"
+                                 " to be generated for the virtual packet"
+                                 " population")
+
             self.last_interaction_type = \
                 mdl.runner.virt_packet_last_interaction_type
             self.last_line_interaction_in_id = \
@@ -206,6 +226,72 @@ class minimal_model(object):
         self.last_interaction_in_nu = self.last_interaction_in_nu * units.Hz
         self.readin = True
 
+    def from_hdf5(self, buffer_or_fname):
+
+        if isinstance(buffer_or_fname, basestring):
+            hdf_store = pd.HDFStore(buffer_or_fname)
+        elif isinstance(buffer_or_fname, pd.HDFStore):
+            hdf_store = buffer_or_fname
+        else:
+            raise IOError('Please specify either a filename or an HDFStore')
+
+        self.time_of_simulation = \
+            hdf_store["/configuration"].time_of_simulation
+        self.lines = hdf_store["/atom_data/lines"]
+
+        if self.mode == "virtual":
+
+            self.last_interaction_type = \
+                hdf_store["/runner/virt_packet_last_interaction_type"]
+            self.last_line_interaction_in_id = \
+                hdf_store["/runner/virt_packet_last_line_interaction_in_id"]
+            self.last_line_interaction_out_id = \
+                hdf_store["/runner/virt_packet_last_line_interaction_out_id"]
+            self.last_interaction_in_nu = \
+                hdf_store["/runner/virt_packet_last_interaction_in_nu"]
+            self.packet_nus = \
+                hdf_store["/runner/virt_packet_nus"]
+            self.packet_energies = \
+                hdf_store["/runner/virt_packet_energies"]
+            self.spectrum_wave = \
+                hdf_store["/spectrum/luminosity_density_virtual"]["wave"]
+            self.spectrum_luminosity = \
+                hdf_store["/spectrum/luminosity_density_virtual"]["flux"]
+
+        elif self.mode == "real":
+            esc_mask = hdf_store["/runner/output_energy"] >= 0
+
+            self.last_interaction_type = \
+                hdf_store["/runner/last_interaction_type"][esc_mask]
+            self.last_line_interaction_in_id = \
+                hdf_store["/runner/last_line_interaction_in_id"][esc_mask]
+            self.last_line_interaction_out_id = \
+                hdf_store["/runner/last_line_interaction_out_id"][esc_mask]
+            self.last_interaction_in_nu = \
+                hdf_store["/runner/last_interaction_in_nu"][esc_mask]
+            self.packet_nus = \
+                hdf_store["/runner/output_nu"][esc_mask]
+            self.packet_energies = \
+                hdf_store["/runner/output_energy"][esc_mask]
+            self.spectrum_wave = \
+                hdf_store["/spectrum/luminosity_density"]["wave"]
+            self.spectrum_luminosity = \
+                hdf_store["/spectrum/luminosity_density"]["flux"]
+        else:
+            raise ValueError
+
+        self.last_interaction_type = self.last_interaction_type.values
+        self.last_line_interaction_in_id = \
+            self.last_line_interaction_in_id.values
+        self.last_line_interaction_out_id = \
+            self.last_line_interaction_out_id.values
+        self.last_interaction_in_nu = \
+            self.last_interaction_in_nu.values * units.Hz
+        self.packet_nus = self.packet_nus.values * units.Hz
+        self.packet_energies = self.packet_energies.values * units.erg
+        self.spectrum_wave = self.spectrum_wave.values
+        self.spectrum_luminosity = self.spectrum_luminosity.values
+        self.readin = True
 
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.
