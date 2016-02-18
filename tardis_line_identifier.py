@@ -6,7 +6,7 @@
 #
 #  Creation Date : 18-02-2016
 #
-#  Last Modified : Thu 18 Feb 2016 15:43:24 CET
+#  Last Modified : Thu 18 Feb 2016 18:51:51 CET
 #
 #  Created By :
 #
@@ -14,7 +14,8 @@
 from __future__ import print_function
 import numpy as np
 import roman
-import util.elements as elem
+import os
+import tardis
 import astropy.units as units
 import matplotlib.pyplot as plt
 from tardis_minimal_model import minimal_model
@@ -156,8 +157,14 @@ class line_identifier(object):
         ax = fig.add_subplot(111)
         fig.subplots_adjust(left=0.2)
 
-        ehelper = elem.elements_helper()
-        ehelper.capitalize()
+        sym_fname = os.path.join(tardis.__path__[0], "data",
+                                 "atomic_symbols.dat")
+        f = open(sym_fname, "r")
+        elems = np.genfromtxt(f, dtype="f8,S5", names=['Z', 'sym'],
+                              delimiter=" ")
+        elements_dict = dict([(int(z), sym) for z, sym in zip(elems['Z'],
+                                                              elems['sym'])])
+        f.close()
 
         sorting_mask = np.argsort(self.lines_count)
         _lines_count = self.lines_count[sorting_mask][-nlines:]
@@ -167,7 +174,7 @@ class line_identifier(object):
         labels = []
         for lid in _lines_ids:
             sym = self.lines_info_unique.ix[lid].atomic_number
-            sym = ehelper.inv_elements[sym]
+            sym = elements_dict[sym]
             ion = self.lines_info_unique.ix[lid].ion_number
             ion = roman.toRoman(int(ion) + 1)
             lam = self.lines_info_unique.ix[lid].wavelength
