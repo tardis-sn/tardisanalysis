@@ -6,7 +6,7 @@
 #
 #  Creation Date : 18-02-2016
 #
-#  Last Modified : Thu 18 Feb 2016 15:16:05 CET
+#  Last Modified : Thu 18 Feb 2016 15:43:24 CET
 #
 #  Created By :
 #
@@ -29,9 +29,18 @@ class line_identifier(object):
 
     def _reset_cache(self):
 
-        self._line_mask = None
+        self._reset_lam_min()
+        self._reset_lam_max()
+        self._reset_derived_quantities()
+
+    def _reset_lam_min(self):
         self._lam_min = None
+
+    def _reset_lam_max(self):
         self._lam_max = None
+
+    def _reset_derived_quantities(self):
+        self._line_mask = None
         self._lam_in = None
         self._lines_info_unique = None
         self._lines_count = None
@@ -50,6 +59,9 @@ class line_identifier(object):
             assert(type(val) == minimal_model)
         except AssertionError:
             raise ValueError("mdl must be a minimal_model instance")
+        if not val.readin:
+            raise ValueError("empty minimal_model; use from_interactive or "
+                             "from_hdf5 to fill the model")
         self._mdl = val
 
     @property
@@ -60,6 +72,7 @@ class line_identifier(object):
 
     @lam_min.setter
     def lam_min(self, val):
+        self._reset_derived_quantities()
         try:
             self._lam_min = val.to(units.AA)
         except AttributeError:
@@ -73,6 +86,7 @@ class line_identifier(object):
 
     @lam_max.setter
     def lam_max(self, val):
+        self._reset_derived_quantities()
         try:
             self._lam_max = val.to(units.AA)
         except AttributeError:
@@ -140,6 +154,7 @@ class line_identifier(object):
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
+        fig.subplots_adjust(left=0.2)
 
         ehelper = elem.elements_helper()
         ehelper.capitalize()
@@ -172,6 +187,6 @@ class line_identifier(object):
         ax.set_title(title)
         ax.barh(np.arange(len(_lines_count)), _lines_count)
         ax.set_yticks(np.arange(len(_lines_count)) + 0.4)
-        ax.set_yticklabels(labels)
+        ax.set_yticklabels(labels, size="small")
         ax.annotate(info, xy=(0.95, 0.05), xycoords="axes fraction",
                     horizontalalignment="right", verticalalignment="bottom")
