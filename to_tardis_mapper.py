@@ -6,7 +6,7 @@
 #
 #  Creation Date : 29-02-2016
 #
-#  Last Modified : Tue 01 Mar 2016 13:58:41 CET
+#  Last Modified : Tue 01 Mar 2016 14:56:23 CET
 #
 #  Created By :
 #
@@ -141,6 +141,16 @@ class to_tardis_mapper(object):
                 z = nucname.znum(item[0])
                 self.abundances_interp[z][i] = \
                     self.abundances_interp[z][i] + item[1]
+
+    def be_fix(self, to_z=6):
+
+        print("Total relative Be mass in model: {:e}\n".format(
+            (self.abundances_interp[4] * self.dm_interp).sum() /
+            self.dm_interp.sum()))
+
+        self.abundances_interp[to_z] = (
+            self.abundances_interp[to_z] + self.abundances_interp[4])
+        self.abundances_interp[4] = np.zeros(self.N_interp)
 
     def write_tardis_abundance_file(self, fname="tardis_abundances.dat"):
         f = open(fname, "w")
