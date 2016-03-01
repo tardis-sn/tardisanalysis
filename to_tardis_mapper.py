@@ -6,13 +6,16 @@
 #
 #  Creation Date : 29-02-2016
 #
-#  Last Modified : Mon 29 Feb 2016 18:03:46 CET
+#  Last Modified : Tue 01 Mar 2016 13:58:41 CET
 #
 #  Created By :
 #
 # _._._._._._._._._._._._._._._._._._._._._.
 import numpy as np
 import astropy.units as units
+from pyne import nucname, material
+
+zmax = 30
 
 
 class original_model(object):
@@ -87,10 +90,8 @@ class to_tardis_mapper(object):
     def remap_abundances(self, v, t):
         self.abundances_interp = {}
         self.radio_abundances_interp = {}
-        zmax = 30
 
         def remap_species(vrorig, Xorig):
-            print Xorig
             Xrorig = np.zeros(len(Xorig)) * self.orig.dm.unit
 
             Xrorig[0] = self.orig.dm[0] * Xorig[0]
@@ -102,14 +103,11 @@ class to_tardis_mapper(object):
                 np.append(0 * vrorig.unit, vrorig)**3,
                 np.append(0 * Xrorig.unit, Xrorig)) * Xrorig.unit
 
-            print X_interp
             X_interp = X_interp[1:] - X_interp[:-1]
-            print (X_interp / self.dm_interp).to("")
 
             return (X_interp / self.dm_interp).to("").value
 
-        for i in xrange(zmax):
-            z = i+1
+        for z in xrange(1, zmax+1):
 
             vrorig = self.orig.vr.to("cm/s")
             Xorig = self.orig.stable_abundances[z]
@@ -125,7 +123,36 @@ class to_tardis_mapper(object):
 
             X_interp = remap_species(vrorig, Xorig)
 
-            self.radio_abundances_interp[z] = X_interp
+            self.radio_abundances_interp[ident] = X_interp
+
+    def decay_abundances(self, v, t):
+
+        for i in xrange(self.N_interp):
+            comp = {}
+            mass = 0
+            for ident in self.radio_abundances_interp.keys():
+                Xi = self.radio_abundances_interp[ident][i]
+                mass += Xi
+                comp[nucname.id(ident)] = Xi
+            inp = material.Material(comp, mass=mass)
+            res = inp.decay(t.to("s").value).mult_by_mass()
+
+            for item in res.items():
+                z = nucname.znum(item[0])
+                self.abundances_interp[z][i] = \
+                    self.abundances_interp[z][i] + item[1]
+
+    def write_tardis_abundance_file(self, fname="tardis_abundances.dat"):
+        f = open(fname, "w")
+        f.write("# index Z=1 - Z={:d}\n".format(zmax))
+        X = np.zeros((zmax+1, self.N_interp+1))
+
+        X[0, :] = np.arange(self.N_interp+1)
+        X[1:, 1:] = np.array([self.abundances_interp[z] for z in xrange(1, zmax+1)])
+        X[1:, 0] = X[1:, 1]
+
+        np.savetxt(f, X.T, fmt=["% 4d"] + ["%.7e" for i in xrange(1, zmax+1)])
+        f.close()
 
     def write_tardis_density_file(self, fname="tardis_density.dat"):
 
