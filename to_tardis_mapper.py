@@ -6,20 +6,49 @@
 #
 #  Creation Date : 29-02-2016
 #
-#  Last Modified : Tue 01 Mar 2016 18:58:39 CET
+#  Last Modified : Fri 04 Mar 2016 12:04:50 CET
 #
 #  Created By :
 #
 # _._._._._._._._._._._._._._._._._._._._._.
+"""A simple tool to map the output of SN explosion calculations or any ejecta
+model into Tardis, using its capability to work with specific density and
+abundance files.
+"""
 import numpy as np
+import logging
 import astropy.units as units
 from pyne import nucname, material
+
+logger = logging.getLogger(__name__)
+
+try:
+    material.Material().decay
+except AttributeError:
+    logger.critical("PyNe module outdated: version >= 0.5 is required")
+    raise ImportError("No recent PyNe module found")
 
 # maximum atomic number
 zmax = 30
 
 
 class original_model(object):
+    """Simple model interface. It and its derived classes should provide a
+    common interface for all possible explosion model formats.
+
+    This class only requires a minimal set of information, from which all the
+    remaining quantities are constructed (under the assumption of homologous
+    expansion). For each radial shell, the inner and the outer shell radius
+    have to be provided, in addition with the shell density, the mass fractions
+    of all stable elements and of all radioactive elements. The final
+    information to be passed is the time since explosion.
+
+    Velocity and shell masses are generated from these input data, by assuming
+    perfect homologous expansion, (i.e. $u = r/t$) and spherical symmetry.
+
+    Parameters
+    ----------
+    """
     def __init__(self):
 
         self._ro = None
@@ -37,6 +66,9 @@ class original_model(object):
         self._radio_abundances = None
 
     def _reset_cached_variables(self):
+        """Resets the cached derived quantities. This routine should be called
+        every time one of the principle inputs (such as density) is reset.
+        """
 
         self._nzones = None
         self._vo = None
@@ -158,6 +190,9 @@ class original_model(object):
 
     @property
     def stable_abundances(self):
+        """a dictionary holding the mass fractions of all stable elements up to
+        Z = zmax. The proton number serves as dictionary key
+        """
         if self._stable_abundances is None:
             tmp = {}
 
@@ -170,17 +205,61 @@ class original_model(object):
 
     @property
     def radio_abundances(self):
+        """a dictionary holding the mass fractions of all radioactive isotopes
+        at time = t. Strings such as 'Ni56', i.e. containing the Element symbol
+        and the mass number, serve as dictionary keys
+        """
         if self._radio_abundances is None:
             self._radio_abundances = {}
         return self._radio_abundances
 
-    def read_w7_density(self, fname):
+    def read_density(self, fname):
+        """A prototype for reading the radius and density information from
+        file"""
+
+        pass
+
+    def read_abundances(self, fname):
+        """A prototype for reading the stable and radioactive elemental
+        abundances from file"""
+
+        pass
+
+
+class w7_model(original_model):
+    """A simple interface class for the W7 model.
+
+    Notes
+    -----
+    The original W7 model has been presented by [1]_. This reader is designed
+    particular version calculated by [2]_.
+
+    References
+    ----------
+
+    .. [1] Nomoto et al. "Accreting white dwarf models of Type I supernovae.
+       III - Carbon deflagration supernovae" ApJ, 1984, 286, 644-658
+    .. [2] Iwamoto et al. "Nucleosynthesis in Chandrasekhar Mass Models for
+       Type IA Supernovae and Constraints on Progenitor Systems and
+       Burning-Front Propagation" ApJS, 1999, 125, 439-462
+    """
+    def __init__(self):
+        super(w7_model, self).__init__()
+
+    def read_density(self, fname):
+        """Read the radius and density of the W7 model from file.
+
+        Parameters
+        ----------
+        fname : str
+            Name of the hydrodynamics file of the W7 model
+        """
 
         f = open(fname, "r")
 
         # read header
         buffer = f.readline().rsplit()
-        self.t= float(buffer[2]) * units.s
+        self.t = float(buffer[2]) * units.s
         buffer = f.readline()
 
         # read main data block
@@ -191,15 +270,25 @@ class original_model(object):
         self.ri = np.insert(self.ro, 0, 0 * units.cm)[:-1]
         self.rho = data[:, 3] * units.g / units.cm**3
 
-    def read_w7_abundances(self, fname):
+    def read_abundances(self, fname):
+        """Read elemental abundances of the W7 model from file.
+
+        Parameters
+        ----------
+        fname : str
+            Name of the nucleosynthesis file of the W7 model
+        """
 
         f = open(fname, "r")
         data = np.loadtxt(f, skiprows=1)
         f.close()
 
-        for i in xrange(zmax):
+        # the file contains abundances for elements from Z=1 to Z=32 (Ge).
+        for i in xrange(np.max([zmax, 32])):
             self.stable_abundances[i+1] = data[:, i]
 
+        # the last three columns contain the mass fractions of the radioactive
+        # isotopes nickel-56, cobalt-56, nickel-57
         self.radio_abundances["ni56"] = data[:, 32]
         self.radio_abundances["co56"] = data[:, 33]
         self.radio_abundances["ni57"] = data[:, 34]
