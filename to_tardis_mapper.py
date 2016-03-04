@@ -2,13 +2,13 @@
 #
 #  File Name : to_tardis_mapper.py
 #
-#  Purpose :
+#  Purpose : Generate Tardis input from generic explosion models
 #
 #  Creation Date : 29-02-2016
 #
-#  Last Modified : Fri 04 Mar 2016 12:04:50 CET
+#  Last Modified : Fri 04 Mar 2016 15:23:22 CET
 #
-#  Created By :
+#  Created By : unoebauer
 #
 # _._._._._._._._._._._._._._._._._._._._._.
 """A simple tool to map the output of SN explosion calculations or any ejecta
@@ -45,6 +45,13 @@ class original_model(object):
 
     Velocity and shell masses are generated from these input data, by assuming
     perfect homologous expansion, (i.e. $u = r/t$) and spherical symmetry.
+
+    Notes
+    -----
+
+    The to_tardis_mapper tool expects that stable_abundances + radio_abundance
+    = 1. In other words, the radioactive isotopes should not be contained in
+    the mass fractions stores in stable_abundances.
 
     Parameters
     ----------
@@ -213,6 +220,30 @@ class original_model(object):
             self._radio_abundances = {}
         return self._radio_abundances
 
+    @property
+    def complete(self):
+        """A simple flag determining whether all quantities necessary for the
+        mapping process have been set/read-in"""
+
+        _complete = False
+        try:
+            self.t
+            self.rho
+            self.ro
+            self.ri
+            _complete = True
+        except ValueError:
+            pass
+
+        try:
+            X = np.array(
+                [self.stable_abundances[z] for z in xrange(1, zmax+1)])
+            _complete = _complete * (X > 0).any()
+        except ValueError:
+            _complete = False
+
+        return _complete
+
     def read_density(self, fname):
         """A prototype for reading the radius and density information from
         file"""
@@ -295,26 +326,105 @@ class w7_model(original_model):
 
 
 class to_tardis_mapper(object):
+    """A simple mapper object, transforming explosion models, stored in the
+    original_model interface classes, into Tardis specific structure input
+    files
+
+    Parameters
+    ----------
+    orig_model : original_model or derived classes
+        interface object holding the essential data of the original explosion
+        model
+    """
     def __init__(self, orig_model):
 
+        if not orig_model.complete:
+            logger.critical("Not all necessary information have been"
+                            " set/read-in in the original model")
+            raise ValueError("Check original_model for completeness")
         self.orig = orig_model
 
     def remap(self, v, t, decay=True, write_density=True,
-              density_fname="tardis_density.dat", write_abundances=True,
-              abundance_fname="tardis_abundances.dat", be_fix=True, to_z=6):
+              density_fname="tardis_densities.dat", write_abundances=True,
+              abundance_fname="tardis_abundances.dat", be_fix=True, be_to_z=6):
+        """Perform the remapping of the original model onto a specified Tardis
+        velocity grid. A homologous expansion from the time of the model to the
+        time since explosion used in the Tardis calculation is automatically
+        performed. Optionally, the decay of the radioactive isotopes can also
+        be performed. The remapped model can then be written to Tardis files.
+
+        Notes
+        -----
+        When supplying specific structure files to Tardis, it expects to find
+        also the density and composition of the photosphere. Thus, if the
+        ejecta above the photosphere is supposed to be described by 20 shells,
+        the data files have to contain 21 rows. The specific density and
+        composition of the photosphere is not important since this information
+        is not used within Tardis - the photospheric velocity (i.e. the
+        velocity of the first row) is used!
+
+        Parameters
+        ----------
+        v : array-like astropy.units.Quantity
+            Tardis velocity grid, interpreted as the velocity at the outer
+            shell edges. Mind the photospheric shell!
+        t : scalar astropy.units.Quantity
+            start time (time since explosion) of the Tardis calculation
+        decay : bool
+            perform decay of the radioactive isotopes (default True)
+        write_density : bool
+            write remapped density to a Tardis specific structure file (default
+            True)
+        density_fname : str
+            name of the Tardis specific structure file (default
+            'tardis_densities.dat')
+        write_abundances : bool
+            write remapped abundances to a Tardis specific abundance file
+            (default True)
+        abundance_fname : str
+            name of the Tardis specific structure file (default
+            'tardis_abundances.dat')
+        be_fix : bool
+            perform the Beryllium fix (see #438), i.e. set Be to zero and add
+            its abundance to a different element (default True)
+        be_to_z : int
+            proton number of the destination element for the Be fix (default 6,
+            i.e. carbon)
+        """
 
         self._remap_density(v, t)
-        self._remap_abundances(t)
+        self._remap_abundances()
+
         if decay:
-            self._decay_abundances(t)
+            self._decay_abundances()
+        else:
+            self._copy_radio_abundances()
         if be_fix:
-            self._be_fix(to_z=to_z)
+            self._be_fix(to_z=be_to_z)
         if write_density:
             self._write_tardis_density_file(fname=density_fname)
         if write_abundances:
             self._write_tardis_abundance_file(fname=abundance_fname)
 
     def _remap_density(self, v, t):
+        """Remap density of the original_model onto the provided velocity
+        grid and perform a homologous expansion of the density until the
+        defined start time of Tardis
+
+        Notes
+        -----
+
+        For the remapping, we interpolate mr in the v**3 space (corresponds to
+        volume space).
+
+        Parameters
+        ----------
+        v : array-like astropy.units.Quantity
+            Tardis velocity grid, interpreted as the velocity at the outer
+            shell edges. Mind the photospheric shell!
+        t : scalar astropy.units.Quantity
+            start time (time since explosion) of the Tardis calculation
+        """
 
         self.t = t
         self.N_interp = len(v) - 1
@@ -335,11 +445,46 @@ class to_tardis_mapper(object):
         self.dm_interp = (mr_interp[1:] - mr_interp[:-1])
         self.rho_interp = (self.dm_interp / V_interp).to("g/cm^3")
 
-    def _remap_abundances(self, t):
+    def _remap_abundances(self):
+        """Remap abundances for the original model onto the grid defined in
+        _remap_density. This routine has be called after _remap_density is
+        performed.
+
+        Notes
+        -----
+        Must be called after _remap_density.
+
+        Raises
+        ------
+        AttributeError if called before _remap_density
+        """
+        try:
+            self.v_interp_l
+            self.v_interp_r
+        except AttributeError:
+            logger.critical("Density must be remapped before abundances are"
+                            " addressed")
+            raise AttributeError("no v_interp_r; call _remap_density first")
+
         self.abundances_interp = {}
         self.radio_abundances_interp = {}
 
-        def remap_species(vrorig, Xorig):
+        def remap_species(Xorig):
+            """helper routine to remap one specific elemental species onto the
+            new velocity grid
+
+            Parameters
+            ----------
+            Xorig : numpy.ndarray
+                original mass fraction of the original model
+
+            Returns
+            -------
+            X_interp : numpy.ndarray
+                remapped mass fractions, corresponding to the Tardis model
+            """
+
+            vrorig = self.orig.vo.to("cm/s")
             Xrorig = np.zeros(len(Xorig)) * self.orig.dm.unit
 
             Xrorig[0] = self.orig.dm[0] * Xorig[0]
@@ -355,25 +500,69 @@ class to_tardis_mapper(object):
 
             return (X_interp / self.dm_interp).to("").value
 
+        # remap stable elements
         for z in xrange(1, zmax+1):
 
-            vrorig = self.orig.vo.to("cm/s")
             Xorig = self.orig.stable_abundances[z]
-
-            X_interp = remap_species(vrorig, Xorig)
+            X_interp = remap_species(Xorig)
 
             self.abundances_interp[z] = X_interp
 
+        # remap radioactive isotopes
         for ident in self.orig.radio_abundances.keys():
 
-            vrorig = self.orig.vo.to("cm/s")
             Xorig = self.orig.radio_abundances[ident]
 
-            X_interp = remap_species(vrorig, Xorig)
+            X_interp = remap_species(Xorig)
 
             self.radio_abundances_interp[ident] = X_interp
 
-    def _decay_abundances(self, t):
+    def _copy_radio_abundances(self):
+        """Copies the radioactive isotopes onto the corresponding stable
+        elements. This routine is intended for uses of the mapper during which
+        the decay is neglected
+
+        Notes
+        -----
+        Must be called after _remap_abundances.
+
+        Raises
+        ------
+        AttributeError if called before _remap_abundances
+        """
+        try:
+            self.radio_abundances_interp
+        except AttributeError:
+            logger.critical("Abundances must be remapped before radioactive:"
+                            " isotopes are copied onto the stable elements")
+            raise AttributeError("no radio_abundances_interp; call"
+                                 " _remap_abundances first")
+
+        for ident in self.radio_abundances_interp.keys():
+            elemid = nucname.id(ident)
+            z = nucname.znum(elemid)
+            self.abundances_interp[z] = \
+                self.abundances_interp[z] + self.radio_abundances_interp[ident]
+
+    def _decay_abundances(self):
+        """Determines the decay of all radioactive isotopes. Afterwards their
+        mass fractions are added to the stable elements.
+
+        Notes
+        -----
+        Must be called after _remap_abundances.
+
+        Raises
+        ------
+        AttributeError if called before _remap_abundances
+        """
+        try:
+            self.radio_abundances_interp
+        except AttributeError:
+            logger.critical("Abundances must be remapped before decay is"
+                            " handled")
+            raise AttributeError("no radio_abundances_interp; call "
+                                 "_remap_abundances first")
 
         for i in xrange(self.N_interp):
             comp = {}
@@ -383,7 +572,8 @@ class to_tardis_mapper(object):
                 mass += Xi
                 comp[nucname.id(ident)] = Xi
             inp = material.Material(comp, mass=mass)
-            res = inp.decay(t.to("s").value).mult_by_mass()
+            res = inp.decay(
+                (self.t - self.orig.t).to("s").value).mult_by_mass()
 
             for item in res.items():
                 z = nucname.znum(item[0])
@@ -391,8 +581,32 @@ class to_tardis_mapper(object):
                     self.abundances_interp[z][i] + item[1]
 
     def _be_fix(self, to_z=6):
+        """Set Beryllium abundance to zero and add its mass fraction to another
+        (specified) element. This is done to avoid issue #438.
 
-        print("Total relative Be mass in model: {:e}\n".format(
+        Notes
+        -----
+        Must be called after _remap_abundances.
+
+        Parameters
+        ---------
+        to_z : int
+            proton number of the destination element for the Be fix (default 6,
+            i.e. carbon)
+
+        Raises
+        ------
+        AttributeError if called before _remap_abundances
+        """
+        try:
+            self.abundances_interp
+        except AttributeError:
+            logger.critical("Abundances must be remapped before the Be fix can"
+                            " be applied")
+            raise AttributeError("no abundances_interp; call"
+                                 " _remap_abundances first")
+
+        logger.info("Total relative Be mass in model: {:e}\n".format(
             (self.abundances_interp[4] * self.dm_interp).sum() /
             self.dm_interp.sum()))
 
@@ -401,19 +615,35 @@ class to_tardis_mapper(object):
         self.abundances_interp[4] = np.zeros(self.N_interp)
 
     def _write_tardis_abundance_file(self, fname="tardis_abundances.dat"):
+        """Write specific density file for Tardis
+
+        Parameters
+        ----------
+        fname : str
+            name of the Tardis specific structure file (default
+            'tardis_abundances.dat')
+        """
         f = open(fname, "w")
         f.write("# index Z=1 - Z={:d}\n".format(zmax))
         X = np.zeros((zmax+1, self.N_interp+1))
 
         X[0, :] = np.arange(self.N_interp+1)
-        X[1:, 1:] = np.array([self.abundances_interp[z] for z in xrange(1, zmax+1)])
+        X[1:, 1:] = np.array(
+            [self.abundances_interp[z] for z in xrange(1, zmax+1)])
         X[1:, 0] = X[1:, 1]
 
         np.savetxt(f, X.T, fmt=["% 4d"] + ["%.7e" for i in xrange(1, zmax+1)])
         f.close()
 
-    def _write_tardis_density_file(self, fname="tardis_density.dat"):
+    def _write_tardis_density_file(self, fname="tardis_densities.dat"):
+        """Write specific abundance file for Tardis
 
+        Parameters
+        ----------
+        fname : str
+            name of the Tardis specific structure file (default
+            'tardis_densities.dat')
+        """
         f = open(fname, "w")
 
         f.write("{:f} {:s}\n".format(self.t.to("day").value, "day"))
