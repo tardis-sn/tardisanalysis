@@ -3,9 +3,7 @@ originally proposed by M. Kromer (see, for example, Kromer et al. 2013, figure
 4).
 """
 import logging
-import os
 import numpy as np
-import pandas as pd
 import astropy.units as units
 import astropy.constants as csts
 import matplotlib
@@ -28,8 +26,6 @@ elements = {'neut': 0, 'h': 1, 'he': 2, 'li': 3, 'be': 4, 'b': 5, 'c': 6, 'n':
 inv_elements = dict([(v, k) for k, v in elements.items()])
 
 
-
-
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.
     Kromer.
@@ -44,8 +40,11 @@ class tardis_kromer_plotter(object):
 
     Parameters
     ----------
-    mdl : tardis.model.Radial1DModel or model_h5
-        model (or model_h5) object of the Tardis run
+    mdl : minimal_model
+        a minimal_model object containing the Tardis run
+    mode : str, optional
+        'real' (default) or 'virtual'; determines which packet population is
+        used to generate the Kromer plot.
 
     Notes
     -----
