@@ -6,7 +6,7 @@
 #
 #  Creation Date : 18-02-2016
 #
-#  Last Modified : Fri 11 Mar 2016 18:24:59 CET
+#  Last Modified : Tue 15 Mar 2016 09:27:12 CET
 #
 #  Created By :
 #
@@ -41,8 +41,8 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
     path : str
         location of the date within the HDF5 file (default '', i.e. its root)
     mode : str
-        "virtual" (default)  or "real"; store the properties of the virtual or
-        the real packet population
+        "virtual" (default), "real" or "both"; store the properties of the
+        virtual or the real packet population
     """
 
     def _save_spectrum_real(key, path, hdf_store):
@@ -74,29 +74,41 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
         pd.Series(configuration_dict).to_hdf(hdf_store,
                                              configuration_dict_path)
 
-    if mode == "virtual":
-        include_from_runner_ = \
+    possible_modes = ["real", "virtual", "both"]
+    try:
+        assert(mode in possible_modes)
+    except AssertionError:
+        raise ValueError(
+            "Wrong mode - possible_modes are {:s}".format(
+                ", ".join(possible_modes)))
+
+    if mode == "virtual" and mdl.runner.virt_logging == 0:
+        raise ValueError(
+            "Virtual packet logging is switched off - cannot store the "
+            "properties of the virtual packet population")
+
+    include_from_runner_ = {}
+    include_from_spectrum_ = {}
+    if mode == "virtual" or mode == "both":
+        include_from_runner_.update(
             {'virt_packet_last_interaction_type': None,
              'virt_packet_last_line_interaction_in_id': None,
              'virt_packet_last_line_interaction_out_id': None,
              'virt_packet_last_interaction_in_nu': None,
              'virt_packet_nus': None,
-             'virt_packet_energies': None}
-        include_from_spectrum_ = \
-            {'luminosity_density_virtual': _save_spectrum_virtual}
-    elif mode == "real":
-        include_from_runner_ = \
+             'virt_packet_energies': None})
+        include_from_spectrum_.update(
+            {'luminosity_density_virtual': _save_spectrum_virtual})
+    if mode == "real" or mode == "both":
+        include_from_runner_.update(
             {'last_interaction_type': None,
              'last_line_interaction_in_id': None,
              'last_line_interaction_out_id': None,
              'last_interaction_in_nu': None,
              'output_nu': None,
-             'output_energy': None}
-        include_from_spectrum_ = \
-            {'luminosity_density': _save_spectrum_real}
-
-    else:
-        raise ValueError
+             'output_energy': None})
+        include_from_spectrum_.update(
+            {'luminosity_density': _save_spectrum_real})
 
     include_from_atom_data_ = {'lines': None}
     include_from_model_in_hdf5 = {'runner': include_from_runner_,
