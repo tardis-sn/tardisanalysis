@@ -50,8 +50,8 @@ elements for the formation of the synthetic spectra may be illustrated. This
 type of illustration has been developed by M. Kromer.
 
 **Important:** The virtual packet logging capability must be active in order to
-use this tool. Thus, Tardis must be compiled with the flag
-``--with-vpacket-logging``.
+use this tool to generate Kromer plots from the virtual packet population.
+Thus, Tardis must be compiled with the flag ``--with-vpacket-logging``.
 
 The following figure shows such a "Kromer-type" plot for a Tardis calculation
 using the ``tardis_example`` setup:
@@ -64,12 +64,21 @@ It has been produced with the following instructions:
 import tardis
 import yaml
 import tardis_kromer_plot as tkp
+import tardis_minimal_model as tmm
 
 config = yaml.safe_load(open("tardis_example.yml", "r"))
 mdl = tardis.run_tardis(config)
+minmodel = tmm.minimal_model(mode="virtual")
+minmodel.from_interactive(mdl)
+
 
 # initialise the plotting tool
-plotter = tkp.tardis_kromer_plotter(mdl)
+plotter = tkp.tardis_kromer_plotter(minmodel, mode="virtual")
 # generate plot
 plotter.generate_plot(xlim=(3000,1e4), twinx=True)
 ```
+
+A Kromer-type plot for the real packet population may be generated analogously
+by replacing ``mode='virtual'`` with ``mode='real'`` in the above example.:
+
+![image](images/kromer_plot_example_real.png)
