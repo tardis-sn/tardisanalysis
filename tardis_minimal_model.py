@@ -6,7 +6,7 @@
 #
 #  Creation Date : 18-02-2016
 #
-#  Last Modified : Tue 15 Mar 2016 09:27:12 CET
+#  Last Modified : Tue 02 Aug 2016 15:09:26 CEST
 #
 #  Created By :
 #
@@ -246,9 +246,9 @@ class minimal_model(object):
             self.packet_energies = \
                 mdl.runner.virt_packet_energies * units.erg
             self.spectrum_wave = \
-                mdl.spectrum_virtual.wavelength
+                mdl.runner.spectrum_virtual.wavelength
             self.spectrum_luminosity = \
-                mdl.spectrum_virtual.luminosity_density_lambda
+                mdl.runner.spectrum_virtual.luminosity_density_lambda
         elif self.mode == "real":
 
             esc_mask = mdl.runner.output_energy >= 0
@@ -266,9 +266,9 @@ class minimal_model(object):
             self.packet_energies = \
                 mdl.runner.output_energy[esc_mask]
             self.spectrum_wave = \
-                mdl.spectrum.wavelength
+                mdl.runner.spectrum.wavelength
             self.spectrum_luminosity = \
-                mdl.spectrum.luminosity_density_lambda
+                mdl.runner.spectrum.luminosity_density_lambda
         else:
             raise ValueError
         self.last_interaction_in_nu = self.last_interaction_in_nu * units.Hz
