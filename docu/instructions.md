@@ -18,10 +18,9 @@ instructions are omitted):
 
 ```
 import tardis
-import yaml
 import tardis_opacity as top
 
-config = yaml.safe_load(open("tardis_example.yml", "r"))
+config = tardis.yaml_load("tardis_example.yml")
 mdl = tardis.run_tardis(config)
 
 # initialise opacity calculator
@@ -62,11 +61,10 @@ It has been produced with the following instructions:
 
 ```
 import tardis
-import yaml
 import tardis_kromer_plot as tkp
 import tardis_minimal_model as tmm
 
-config = yaml.safe_load(open("tardis_example.yml", "r"))
+config = tardis.yaml_load("tardis_example.yml")
 mdl = tardis.run_tardis(config)
 minmodel = tmm.minimal_model(mode="virtual")
 minmodel.from_interactive(mdl)
