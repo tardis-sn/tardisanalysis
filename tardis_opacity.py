@@ -7,21 +7,20 @@
 #
 #  Creation Date : 28-01-2016
 #
-#  Last Modified : Mon 01 Feb 2016 16:00:23 CET
+#  Last Modified : Tue 02 Aug 2016 15:16:56 CEST
 #
 #  Created By : U.M.Noebauer
 #
 # _._._._._._._._._._._._._._._._._._._._._.
-"""This module provides an opacity calculator class with which the opacities and
-optical depth information may be extracted from Tardis runs.
+"""This module provides an opacity calculator class with which the opacities
+and optical depth information may be extracted from Tardis runs.
 
 Currently, the diagnostics tools require the full model information (i.e. the
-full Radial1DModel object) which is typically only available when running Tardis
-within an interactive python shell or within a script. Also, the tools were
-written with the model structure of Tardis v1.5dev in mind (the upstream
+full Radial1DModel object) which is typically only available when running
+Tardis within an interactive python shell or within a script. Also, the tools
+were written with the model structure of Tardis v1.5dev in mind (the upstream
 repository was at fe26323be95b44a948c98e5b026a714628208b84). No backwards
-compatibility is guaranteed!
-"""
+compatibility is guaranteed!  """
 import logging
 import numpy as np
 import astropy.units as units
@@ -47,10 +46,11 @@ class opacity_calculator(object):
         * Planck-mean total optical depths of the model
 
     All these quantities are calculated on the fly once the corresponding class
-    attributes are accesses. A simple caching scheme is implemented which stores
-    all opacity and optical depth quantities after they have been calculated for
-    the first time. Only when the base model or the parameters of the frequency
-    grid change, the opacity and optical depth are recalculated.
+    attributes are accesses. A simple caching scheme is implemented which
+    stores all opacity and optical depth quantities after they have been
+    calculated for the first time. Only when the base model or the parameters
+    of the frequency grid change, the opacity and optical depth are
+    recalculated.
 
     Parameters
     ----------
@@ -305,7 +305,7 @@ class opacity_calculator(object):
             expansion opacity array (shape Nbins x Nshells)
         """
 
-        index = self.mdl.plasma_array.tau_sobolevs.index
+        index = self.mdl.plasma.tau_sobolevs.index
         line_waves = self.mdl.atom_data.lines.ix[index]
         line_waves = line_waves.wavelength.values * units.AA
 
@@ -313,12 +313,13 @@ class opacity_calculator(object):
 
         for i in xrange(self.nbins):
 
-            lam_low = self.nu_bins[i+1].to("AA", equivalencies=units.spectral())
+            lam_low = self.nu_bins[i+1].to("AA",
+                                           equivalencies=units.spectral())
             lam_up = self.nu_bins[i].to("AA", equivalencies=units.spectral())
 
             mask = np.argwhere((line_waves > lam_low) * (line_waves <
                                                          lam_up)).ravel()
-            taus = self.mdl.plasma_array.tau_sobolevs.iloc[mask]
+            taus = self.mdl.plasma.tau_sobolevs.iloc[mask]
             tmp = np.sum(1 - np.exp(-taus)).values
             kappa_exp[i, :] = (tmp * self.nu_bins[i] / (self.nu_bins[i+1] -
                                                         self.nu_bins[i]) /
@@ -345,7 +346,7 @@ class opacity_calculator(object):
             logger.warning("using astropy < 1.1.1: setting sigma_T manually")
             sigma_T = 6.65245873e-29 * units.m**2
 
-        edens = self.mdl.plasma_array.electron_densities.values
+        edens = self.mdl.plasma.electron_densities.values
 
         try:
             edens.to("1/cm^3")
@@ -373,7 +374,7 @@ class opacity_calculator(object):
 
         for i in xrange(self.nshells):
             delta_nu = (self.nu_bins[1:] - self.nu_bins[:-1])
-            T = self.mdl.plasma_array.t_rad[i]
+            T = self.mdl.plasma.t_rad[i]
 
             tmp = (blackbody_nu(self.nu_bins[:-1], T) * delta_nu *
                    self.kappa_tot[:, 0]).sum()
@@ -400,8 +401,8 @@ class opacity_calculator(object):
     def _calc_integrated_planck_optical_depth(self):
         """Calculate integrated Planck-mean optical depth
 
-        For each cell, the optical depth integral from the inner shell radius to
-        the surface is determined.
+        For each cell, the optical depth integral from the inner shell radius
+        to the surface is determined.
 
         Returns
         -------
