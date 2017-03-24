@@ -218,7 +218,7 @@ class minimal_model(object):
         """
         
         self.time_of_simulation = simulation.runner.time_of_simulation
-        self.lines = simulation.atom_data.lines
+        self.lines = simulation.plasma.atomic_data.lines
 
         if self.mode == "virtual":
 
