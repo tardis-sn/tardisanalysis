@@ -208,142 +208,58 @@ class minimal_model(object):
         self.spectrum_luminosity = None
         self.time_of_simulation = None
 
-    def from_interactive(self, mdl):
-        """fill the minimal_model from an existing radial1dmodel object
+    def from_interactive(self, simulation):
+        """fill the minimal_model from an existing simulation object
 
         Parameters
         ----------
-        mdl : Radial1DModel
-            Tardis model object holding the run
+        simulation : Simulation
+            Tardis simulation object holding the run
         """
-
-        self.time_of_simulation = mdl.time_of_simulation
-        self.lines = mdl.atom_data.lines
-
-        try:
-            assert(type(mdl) == Radial1DModel)
-        except AssertionError:
-            raise ValueError("input mdl must be a Radial1DModel object")
+        
+        self.time_of_simulation = simulation.runner.time_of_simulation
+        self.lines = simulation.atom_data.lines
 
         if self.mode == "virtual":
 
-            if mdl.runner.virt_logging != 1:
-                raise ValueError("Tardis must be compiled with the virtual"
-                                 " packet logging feature if Kromer plots are"
-                                 " to be generated for the virtual packet"
-                                 " population")
-
             self.last_interaction_type = \
-                mdl.runner.virt_packet_last_interaction_type
+                simulation.runner.virt_packet_last_interaction_type
             self.last_line_interaction_in_id = \
-                mdl.runner.virt_packet_last_line_interaction_in_id
+                simulation.runner.virt_packet_last_line_interaction_in_id
             self.last_line_interaction_out_id = \
-                mdl.runner.virt_packet_last_line_interaction_out_id
+                simulation.runner.virt_packet_last_line_interaction_out_id
             self.last_interaction_in_nu = \
-                mdl.runner.virt_packet_last_interaction_in_nu
+                simulation.runner.virt_packet_last_interaction_in_nu
             self.packet_nus = \
-                mdl.runner.virt_packet_nus * units.Hz
+                simulation.runner.virt_packet_nus * units.Hz
             self.packet_energies = \
-                mdl.runner.virt_packet_energies * units.erg
+                simulation.runner.virt_packet_energies * units.erg
             self.spectrum_wave = \
-                mdl.runner.spectrum_virtual.wavelength
+                simulation.runner.spectrum_virtual.wavelength
             self.spectrum_luminosity = \
-                mdl.runner.spectrum_virtual.luminosity_density_lambda
+                simulation.runner.spectrum_virtual.luminosity_density_lambda
         elif self.mode == "real":
 
-            esc_mask = mdl.runner.output_energy >= 0
+            esc_mask = simulation.runner.output_energy >= 0
 
             self.last_interaction_type = \
-                mdl.runner.last_interaction_type[esc_mask]
+                simulation.runner.last_interaction_type[esc_mask]
             self.last_line_interaction_in_id = \
-                mdl.runner.last_line_interaction_in_id[esc_mask]
+                simulation.runner.last_line_interaction_in_id[esc_mask]
             self.last_line_interaction_out_id = \
-                mdl.runner.last_line_interaction_out_id[esc_mask]
+                simulation.runner.last_line_interaction_out_id[esc_mask]
             self.last_interaction_in_nu = \
-                mdl.runner.last_interaction_in_nu[esc_mask]
+                simulation.runner.last_interaction_in_nu[esc_mask]
             self.packet_nus = \
-                mdl.runner.output_nu[esc_mask]
+                simulation.runner.output_nu[esc_mask]
             self.packet_energies = \
-                mdl.runner.output_energy[esc_mask]
+                simulation.runner.output_energy[esc_mask]
             self.spectrum_wave = \
-                mdl.runner.spectrum.wavelength
+                simulation.runner.spectrum.wavelength
             self.spectrum_luminosity = \
-                mdl.runner.spectrum.luminosity_density_lambda
+                simulation.runner.spectrum.luminosity_density_lambda
         else:
             raise ValueError
         self.last_interaction_in_nu = self.last_interaction_in_nu * units.Hz
         self.readin = True
-
-    def from_hdf5(self, buffer_or_fname):
-        """Fill minimal_model from an HDF5 file, which was created by using
-        store_data_for_minimal_model.
-
-        Parameters
-        ----------
-        buffer_or_fname : str, file stream
-            name of file object containing the essential Tardis run information
-        """
-        if isinstance(buffer_or_fname, basestring):
-            hdf_store = pd.HDFStore(buffer_or_fname)
-        elif isinstance(buffer_or_fname, pd.HDFStore):
-            hdf_store = buffer_or_fname
-        else:
-            raise IOError('Please specify either a filename or an HDFStore')
-
-        self.time_of_simulation = \
-            hdf_store["/configuration"].time_of_simulation
-        self.lines = hdf_store["/atom_data/lines"]
-
-        if self.mode == "virtual":
-
-            self.last_interaction_type = \
-                hdf_store["/runner/virt_packet_last_interaction_type"]
-            self.last_line_interaction_in_id = \
-                hdf_store["/runner/virt_packet_last_line_interaction_in_id"]
-            self.last_line_interaction_out_id = \
-                hdf_store["/runner/virt_packet_last_line_interaction_out_id"]
-            self.last_interaction_in_nu = \
-                hdf_store["/runner/virt_packet_last_interaction_in_nu"]
-            self.packet_nus = \
-                hdf_store["/runner/virt_packet_nus"]
-            self.packet_energies = \
-                hdf_store["/runner/virt_packet_energies"]
-            self.spectrum_wave = \
-                hdf_store["/spectrum/luminosity_density_virtual"]["wave"]
-            self.spectrum_luminosity = \
-                hdf_store["/spectrum/luminosity_density_virtual"]["flux"]
-
-        elif self.mode == "real":
-            esc_mask = hdf_store["/runner/output_energy"] >= 0
-
-            self.last_interaction_type = \
-                hdf_store["/runner/last_interaction_type"][esc_mask]
-            self.last_line_interaction_in_id = \
-                hdf_store["/runner/last_line_interaction_in_id"][esc_mask]
-            self.last_line_interaction_out_id = \
-                hdf_store["/runner/last_line_interaction_out_id"][esc_mask]
-            self.last_interaction_in_nu = \
-                hdf_store["/runner/last_interaction_in_nu"][esc_mask]
-            self.packet_nus = \
-                hdf_store["/runner/output_nu"][esc_mask]
-            self.packet_energies = \
-                hdf_store["/runner/output_energy"][esc_mask]
-            self.spectrum_wave = \
-                hdf_store["/spectrum/luminosity_density"]["wave"]
-            self.spectrum_luminosity = \
-                hdf_store["/spectrum/luminosity_density"]["flux"]
-        else:
-            raise ValueError
-
-        self.last_interaction_type = self.last_interaction_type.values
-        self.last_line_interaction_in_id = \
-            self.last_line_interaction_in_id.values
-        self.last_line_interaction_out_id = \
-            self.last_line_interaction_out_id.values
-        self.last_interaction_in_nu = \
-            self.last_interaction_in_nu.values * units.Hz
-        self.packet_nus = self.packet_nus.values * units.Hz
-        self.packet_energies = self.packet_energies.values * units.erg
-        self.spectrum_wave = self.spectrum_wave.values
-        self.spectrum_luminosity = self.spectrum_luminosity.values
-        self.readin = True
+        
