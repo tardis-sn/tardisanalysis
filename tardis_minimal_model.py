@@ -26,7 +26,7 @@ from tardis.model import Radial1DModel
 logger = logging.getLogger(__name__)
 
 
-def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
+def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5",
                                  path="", mode="virtual"):
     """Simple helper routine to dump all information which are required to
     perform extensive diagnostics with the tardisanalysis tools to an HDF5
@@ -48,8 +48,8 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
     def _save_spectrum_real(key, path, hdf_store):
         """save the real packet spectrum"""
 
-        wave = mdl.spectrum.wavelength.value
-        flux = mdl.spectrum.luminosity_density_lambda.value
+        wave = simulation.runner.spectrum.wavelength.value
+        flux = simulation.runner.spectrum.luminosity_density_lambda.value
 
         luminosity_density = \
             pd.DataFrame.from_dict(dict(wave=wave, flux=flux))
@@ -58,8 +58,9 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
     def _save_spectrum_virtual(key, path, hdf_store):
         """save the virtual packet spectrum"""
 
-        wave = mdl.spectrum_virtual.wavelength.value
-        flux = mdl.spectrum_virtual.luminosity_density_lambda.value
+        wave = simulation.runner.spectrum_virtual.wavelength.value
+        flux = \
+            simulation.runner.spectrum_virtual.luminosity_density_lambda.value
 
         luminosity_density_virtual = pd.DataFrame.from_dict(dict(wave=wave,
                                                                  flux=flux))
@@ -69,7 +70,8 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
         """save some information from the basic configuration of the run. For
         now only the time of the simulation is stored
         """
-        configuration_dict = dict(time_of_simulation=mdl.time_of_simulation)
+        configuration_dict = dict(
+            time_of_simulation=simulation.runner.time_of_simulation)
         configuration_dict_path = os.path.join(path, 'configuration')
         pd.Series(configuration_dict).to_hdf(hdf_store,
                                              configuration_dict_path)
@@ -82,7 +84,7 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
             "Wrong mode - possible_modes are {:s}".format(
                 ", ".join(possible_modes)))
 
-    if mode == "virtual" and mdl.runner.virt_logging == 0:
+    if mode == "virtual" and simulation.runner.virt_logging == 0:
         raise ValueError(
             "Virtual packet logging is switched off - cannot store the "
             "properties of the virtual packet population")
@@ -216,7 +218,7 @@ class minimal_model(object):
         simulation : Simulation
             Tardis simulation object holding the run
         """
-        
+
         self.time_of_simulation = simulation.runner.time_of_simulation
         self.lines = simulation.plasma.atomic_data.lines
 
@@ -262,4 +264,4 @@ class minimal_model(object):
             raise ValueError
         self.last_interaction_in_nu = self.last_interaction_in_nu * units.Hz
         self.readin = True
-        
+
