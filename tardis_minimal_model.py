@@ -17,13 +17,11 @@ tardisanalysis repository provides tools. Relying on this interface model
 objects is a temporary solution until the model storage capability of Tardis
 has reached a mature state.
 """
+from __future__ import print_function
 import pandas as pd
 import astropy.units as units
 import os
-import logging
 from tardis.model import Radial1DModel
-
-logger = logging.getLogger(__name__)
 
 
 def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5",
@@ -139,7 +137,7 @@ def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5
         hdf_store = buffer_or_fname
     else:
         raise IOError('Please specify either a filename or an HDFStore')
-    logger.info('Writing to path %s', path)
+    print('Writing to path %s' % path)
 
     def _get_hdf5_path(path, property_name):
         return os.path.join(path, property_name)
@@ -166,7 +164,8 @@ def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5
         else:
             try:
                 for subkey in include_from_model_in_hdf5[key]:
-                    if include_from_model_in_hdf5[key][subkey] is Nonen:
+                    print(subkey)
+                    if include_from_model_in_hdf5[key][subkey] is None:
                         _save_model_property(getattr(getattr(simulation, key),
                                                      subkey), subkey,
                                              os.path.join(path, key),
@@ -175,11 +174,9 @@ def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5
                         include_from_model_in_hdf5[key][subkey](
                             subkey, os.path.join(path, key), hdf_store)
                     else:
-                        logger.critical('Can not save %s',
-                                        str(os.path.join(path, key, subkey)))
+                        print('Can not save %s' % str(os.path.join(path, key, subkey)))
             except:
-                logger.critical('An error occurred while dumping %s to HDF.',
-                                str(os.path.join(path, key)))
+                print('An error occurred while dumping %s to HDF.' % str(os.path.join(path, key)))
 
     hdf_store.flush()
     hdf_store.close()
