@@ -188,28 +188,28 @@ class opacity_calculator(object):
     def nshells(self):
         """number of radial shells in the model"""
         if self._nshells is None:
-            self._nshells = self.mdl.tardis_config["structure"]["no_of_shells"]
+            self._nshells = self.mdl.model.no_of_shells
         return self._nshells
 
     @property
     def t_exp(self):
         """time since explosion of the model"""
         if self._t_exp is None:
-            self._t_exp = self.mdl.tardis_config['supernova']['time_explosion']
+            self._t_exp = self.mdl.model.time_explosion
         return self._t_exp
 
     @property
     def r_inner(self):
         """inner radius of the model shells"""
         if self._r_inner is None:
-            self._r_inner = self.mdl.tardis_config['structure']['r_inner']
+            self._r_inner = self.mdl.model.r_inner
         return self._r_inner
 
     @property
     def r_outer(self):
         """outer radius of the model shell"""
         if self._r_outer is None:
-            self._r_outer = self.mdl.tardis_config['structure']['r_outer']
+            self._r_outer = self.mdl.model.r_outer
         return self._r_outer
 
     @property
@@ -306,7 +306,8 @@ class opacity_calculator(object):
         """
 
         index = self.mdl.plasma.tau_sobolevs.index
-        line_waves = self.mdl.atom_data.lines.ix[index]
+        line_waves = \
+            self.mdl.plasma.atomic_data.lines.ix[index]
         line_waves = line_waves.wavelength.values * units.AA
 
         kappa_exp = np.zeros((self.nbins, self.nshells)) / units.cm

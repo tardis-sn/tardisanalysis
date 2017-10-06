@@ -230,7 +230,9 @@ class minimal_model(object):
         """
 
         self.time_of_simulation = simulation.runner.time_of_simulation
-        self.lines = simulation.plasma.atomic_data.lines
+        self.lines = \
+            simulation.plasma.atomic_data.lines.reset_index().set_index(
+                'line_id')
         self.R_phot = (simulation.model._velocity[0] *
                        simulation.model.time_explosion).to("cm")
         self.t_inner = simulation.model.t_inner
@@ -296,7 +298,8 @@ class minimal_model(object):
 
         self.time_of_simulation = \
             hdf_store["/configuration"].time_of_simulation
-        self.lines = hdf_store["/atom_data/lines"]
+        self.lines = hdf_store["/atom_data/lines"].reset_index().set_index(
+            'line_id')
         self.R_phot = hdf_store["/configuration"].R_photosphere
         self.t_inner = hdf_store["/configuration"].t_inner
 
