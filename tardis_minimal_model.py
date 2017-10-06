@@ -17,16 +17,14 @@ tardisanalysis repository provides tools. Relying on this interface model
 objects is a temporary solution until the model storage capability of Tardis
 has reached a mature state.
 """
+from __future__ import print_function
 import pandas as pd
 import astropy.units as units
 import os
-import logging
 from tardis.model import Radial1DModel
 
-logger = logging.getLogger(__name__)
 
-
-def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
+def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5",
                                  path="", mode="virtual"):
     """Simple helper routine to dump all information which are required to
     perform extensive diagnostics with the tardisanalysis tools to an HDF5
@@ -45,11 +43,21 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
         virtual or the real packet population
     """
 
+    def _save_atom_data(key, path, hdf_store):
+
+        lines = simulation.plasma.atomic_data.lines
+        property_path = _get_hdf5_path(path, "atom_data/lines")
+
+        try:
+            lines.to_hdf(hdf_store, property_path)
+        except AttributeError:
+            _to_smallest_pandas(lines).to_hdf(hdf_store, property_path)
+
     def _save_spectrum_real(key, path, hdf_store):
         """save the real packet spectrum"""
 
-        wave = mdl.spectrum.wavelength.value
-        flux = mdl.spectrum.luminosity_density_lambda.value
+        wave = simulation.runner.spectrum.wavelength.value
+        flux = simulation.runner.spectrum.luminosity_density_lambda.value
 
         luminosity_density = \
             pd.DataFrame.from_dict(dict(wave=wave, flux=flux))
@@ -58,8 +66,9 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
     def _save_spectrum_virtual(key, path, hdf_store):
         """save the virtual packet spectrum"""
 
-        wave = mdl.spectrum_virtual.wavelength.value
-        flux = mdl.spectrum_virtual.luminosity_density_lambda.value
+        wave = simulation.runner.spectrum_virtual.wavelength.value
+        flux = \
+            simulation.runner.spectrum_virtual.luminosity_density_lambda.value
 
         luminosity_density_virtual = pd.DataFrame.from_dict(dict(wave=wave,
                                                                  flux=flux))
@@ -69,7 +78,11 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
         """save some information from the basic configuration of the run. For
         now only the time of the simulation is stored
         """
-        configuration_dict = dict(time_of_simulation=mdl.time_of_simulation)
+        configuration_dict = dict(
+            time_of_simulation=simulation.runner.time_of_simulation,
+            R_photosphere=(simulation.model.time_explosion *
+                           simulation.model._velocity[0]).to("cm"),
+            t_inner=simulation.model.t_inner)
         configuration_dict_path = os.path.join(path, 'configuration')
         pd.Series(configuration_dict).to_hdf(hdf_store,
                                              configuration_dict_path)
@@ -82,7 +95,7 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
             "Wrong mode - possible_modes are {:s}".format(
                 ", ".join(possible_modes)))
 
-    if mode == "virtual" and mdl.runner.virt_logging == 0:
+    if mode == "virtual" and simulation.runner.virt_logging == 0:
         raise ValueError(
             "Virtual packet logging is switched off - cannot store the "
             "properties of the virtual packet population")
@@ -112,7 +125,7 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
 
     include_from_atom_data_ = {'lines': None}
     include_from_model_in_hdf5 = {'runner': include_from_runner_,
-                                  'atom_data': include_from_atom_data_,
+                                  'atom_data': _save_atom_data,
                                   'spectrum': include_from_spectrum_,
                                   'configuration_dict':
                                   _save_configuration_dict,
@@ -124,7 +137,7 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
         hdf_store = buffer_or_fname
     else:
         raise IOError('Please specify either a filename or an HDFStore')
-    logger.info('Writing to path %s', path)
+    print('Writing to path %s' % path)
 
     def _get_hdf5_path(path, property_name):
         return os.path.join(path, property_name)
@@ -145,14 +158,15 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
 
     for key in include_from_model_in_hdf5:
         if include_from_model_in_hdf5[key] is None:
-            _save_model_property(getattr(mdl, key), key, path, hdf_store)
+            _save_model_property(getattr(simulation, key), key, path, hdf_store)
         elif callable(include_from_model_in_hdf5[key]):
             include_from_model_in_hdf5[key](key, path, hdf_store)
         else:
             try:
                 for subkey in include_from_model_in_hdf5[key]:
+                    print(subkey)
                     if include_from_model_in_hdf5[key][subkey] is None:
-                        _save_model_property(getattr(getattr(mdl, key),
+                        _save_model_property(getattr(getattr(simulation, key),
                                                      subkey), subkey,
                                              os.path.join(path, key),
                                              hdf_store)
@@ -160,11 +174,9 @@ def store_data_for_minimal_model(mdl, buffer_or_fname="minimal_model.hdf5",
                         include_from_model_in_hdf5[key][subkey](
                             subkey, os.path.join(path, key), hdf_store)
                     else:
-                        logger.critical('Can not save %s',
-                                        str(os.path.join(path, key, subkey)))
+                        print('Can not save %s' % str(os.path.join(path, key, subkey)))
             except:
-                logger.critical('An error occurred while dumping %s to HDF.',
-                                str(os.path.join(path, key)))
+                print('An error occurred while dumping %s to HDF.' % str(os.path.join(path, key)))
 
     hdf_store.flush()
     hdf_store.close()
@@ -216,9 +228,12 @@ class minimal_model(object):
         simulation : Simulation
             Tardis simulation object holding the run
         """
-        
+
         self.time_of_simulation = simulation.runner.time_of_simulation
         self.lines = simulation.plasma.atomic_data.lines
+        self.R_phot = (simulation.model._velocity[0] *
+                       simulation.model.time_explosion).to("cm")
+        self.t_inner = simulation.model.t_inner
 
         if self.mode == "virtual":
 
@@ -262,4 +277,79 @@ class minimal_model(object):
             raise ValueError
         self.last_interaction_in_nu = self.last_interaction_in_nu * units.Hz
         self.readin = True
-        
+
+    def from_hdf5(self, buffer_or_fname):
+        """Fill minimal_model from an HDF5 file, which was created by using
+        store_data_for_minimal_model.
+
+        Parameters
+        ----------
+        buffer_or_fname : str, file stream
+            name of file object containing the essential Tardis run information
+        """
+        if isinstance(buffer_or_fname, basestring):
+            hdf_store = pd.HDFStore(buffer_or_fname)
+        elif isinstance(buffer_or_fname, pd.HDFStore):
+            hdf_store = buffer_or_fname
+        else:
+            raise IOError('Please specify either a filename or an HDFStore')
+
+        self.time_of_simulation = \
+            hdf_store["/configuration"].time_of_simulation
+        self.lines = hdf_store["/atom_data/lines"]
+        self.R_phot = hdf_store["/configuration"].R_photosphere
+        self.t_inner = hdf_store["/configuration"].t_inner
+
+        if self.mode == "virtual":
+
+            self.last_interaction_type = \
+                hdf_store["/runner/virt_packet_last_interaction_type"]
+            self.last_line_interaction_in_id = \
+                hdf_store["/runner/virt_packet_last_line_interaction_in_id"]
+            self.last_line_interaction_out_id = \
+                hdf_store["/runner/virt_packet_last_line_interaction_out_id"]
+            self.last_interaction_in_nu = \
+                hdf_store["/runner/virt_packet_last_interaction_in_nu"]
+            self.packet_nus = \
+                hdf_store["/runner/virt_packet_nus"]
+            self.packet_energies = \
+                hdf_store["/runner/virt_packet_energies"]
+            self.spectrum_wave = \
+                hdf_store["/spectrum/luminosity_density_virtual"]["wave"]
+            self.spectrum_luminosity = \
+                hdf_store["/spectrum/luminosity_density_virtual"]["flux"]
+
+        elif self.mode == "real":
+            esc_mask = hdf_store["/runner/output_energy"] >= 0
+
+            self.last_interaction_type = \
+                hdf_store["/runner/last_interaction_type"][esc_mask]
+            self.last_line_interaction_in_id = \
+                hdf_store["/runner/last_line_interaction_in_id"][esc_mask]
+            self.last_line_interaction_out_id = \
+                hdf_store["/runner/last_line_interaction_out_id"][esc_mask]
+            self.last_interaction_in_nu = \
+                hdf_store["/runner/last_interaction_in_nu"][esc_mask]
+            self.packet_nus = \
+                hdf_store["/runner/output_nu"][esc_mask]
+            self.packet_energies = \
+                hdf_store["/runner/output_energy"][esc_mask]
+            self.spectrum_wave = \
+                hdf_store["/spectrum/luminosity_density"]["wave"]
+            self.spectrum_luminosity = \
+                hdf_store["/spectrum/luminosity_density"]["flux"]
+        else:
+            raise ValueError
+
+        self.last_interaction_type = self.last_interaction_type.values
+        self.last_line_interaction_in_id = \
+            self.last_line_interaction_in_id.values
+        self.last_line_interaction_out_id = \
+            self.last_line_interaction_out_id.values
+        self.last_interaction_in_nu = \
+            self.last_interaction_in_nu.values * units.Hz
+        self.packet_nus = self.packet_nus.values * units.Hz
+        self.packet_energies = self.packet_energies.values * units.erg
+        self.spectrum_wave = self.spectrum_wave.values
+        self.spectrum_luminosity = self.spectrum_luminosity.values
+        self.readin = True

@@ -6,6 +6,7 @@ import logging
 import numpy as np
 import astropy.units as units
 import astropy.constants as csts
+import astropy.analytic_functions as af
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -361,6 +362,7 @@ class tardis_kromer_plotter(object):
 
         self._axes_handling_preparation()
         self._generate_emission_part()
+        self._generate_photosphere_part()
         self._generate_and_add_colormap()
         self._generate_and_add_legend()
         self._paxes_handling_preparation()
@@ -415,6 +417,16 @@ class tardis_kromer_plotter(object):
         self.ax.plot(self.mdl.spectrum_wave,
                      self.mdl.spectrum_luminosity,
                      color="blue", drawstyle="steps-post", lw=0.5)
+
+    def _generate_photosphere_part(self):
+        """generate the photospheric input spectrum part of the Kromer plot"""
+
+        Lph = (af.blackbody_lambda(self.mdl.spectrum_wave, self.mdl.t_inner) *
+               4 * np.pi**2 * self.mdl.R_phot**2 * units.sr).to(
+                   "erg / AA / s")
+
+        self.ax.plot(self.mdl.spectrum_wave,
+                     Lph, color="red", ls="dashed")
 
     def _generate_absorption_part(self):
         """generate the absorption part of the Kromer plot"""
@@ -471,7 +483,10 @@ class tardis_kromer_plotter(object):
         bpatch = patches.Patch(color="black", label="photosphere")
         gpatch = patches.Patch(color="grey", label="e-scattering")
         bline = lines.Line2D([], [], color="blue", label="virtual spectrum")
-        self.ax.legend(handles=[bline, gpatch, bpatch])
+        phline = lines.Line2D([], [], color="red", ls="dashed",
+                              label="L at photosphere")
+
+        self.ax.legend(handles=[phline, bline, gpatch, bpatch])
 
     def _axis_handling_label_rescale(self):
         """add axis labels and perform axis scaling"""
