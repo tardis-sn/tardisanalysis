@@ -1,0 +1,42 @@
+tardis_config_version: v1.0
+supernova:
+    luminosity_requested: 8.538 log_lsun
+    time_explosion: 5.9 day
+
+atom_data: kurucz_cd23_chianti_H_He.h5
+
+model:
+
+    structure:
+        type: specific
+        velocity:
+            start: 12400 km/s
+            stop: 24000 km/s
+            num: 20
+
+        density:
+            type: branch85_w7
+
+    abundances:
+        type: uniform
+        Si: 0.60
+        C: 0.30
+        S: 0.10
+
+plasma:
+    ionization: nebular
+    excitation: dilute-lte
+    radiative_rates_type: dilute-blackbody
+    line_interaction_type: downbranch
+
+montecarlo:
+    seed: 23111963
+    no_of_packets: 4.0e+4
+    iterations: 1
+    last_no_of_packets: 5.0e+4
+    no_of_virtual_packets: 5
+
+spectrum:
+    start: 500 angstrom
+    stop: 20000 angstrom
+    num: 10000

@@ -24,3 +24,8 @@ currently in the repository.
   with ``tardis_opacity.py``:
 
 ![image](docu/images/tardis_opacity_example.png)
+
+* computing pseudo equivalent widths (pEW), depths and velocities of spectral features
+  with ``compute_features.py``: (Note, requires PyAstronomy for extinction corrections.)
+
+![image](docu/images/example_spectrum.png)
