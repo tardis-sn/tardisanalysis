@@ -85,14 +85,12 @@ by replacing ``mode='virtual'`` with ``mode='real'`` in the above example.:
 
 With ``compute_features.py``, one can compute the pEW, depth and velocity
 of selected spectral features. The routine that define the features and
-the calculations are based on [Liu+ 2016](http://adsabs.harvard.edu/abs/2016ApJ...827...90L)
-[[http://adsabs.harvard.edu/abs/2012MNRAS.425.1819S | Silverman+ 2012]].
-Uncertainties are computed with a simple Monte Carlo routine based on [[http://adsabs.harvard.edu/abs/2016ApJ...827...90L | Liu+ 2016]].
+the calculations are based on [Silverman+ 2012](http://adsabs.harvard.edu/abs/2012MNRAS.425.1819S).
+Uncertainties are computed with a simple Monte Carlo routine based on [Liu+ 2016](http://adsabs.harvard.edu/abs/2016ApJ...827...90L).
 
 **Important:** To run compute_features.py, the PyAstronomy package
 has to be installed in the same environment as tardis.
-Currently using PyAstronomy v11.0, which can be found at
-[[http://www.hs.uni-hamburg.de/DE/Ins/Per/Czesla/PyA/PyA/index.html]].
+Currently using PyAstronomy v11.0, which can be found [here](http://www.hs.uni-hamburg.de/DE/Ins/Per/Czesla/PyA/PyA/index.html).
 
 ![image](images/example_spectrum.png)
 
