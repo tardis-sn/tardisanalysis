@@ -84,16 +84,14 @@ by replacing ``mode='virtual'`` with ``mode='real'`` in the above example.:
 ## compute_features.py
 
 With ``compute_features.py``, one can compute the pEW, depth and velocity
-of selected spectral features. The procedure the define the features and
-the calculations are based on Silverman+ 2012
-(http://adsabs.harvard.edu/abs/2012MNRAS.425.1819S). Uncertainties are
-comoputed with a simple Monte Carlo routine based on Liu+ 2016
-(http://adsabs.harvard.edu/abs/2016ApJ...827...90L).
+of selected spectral features. The routine that define the features and
+the calculations are based on [[http://adsabs.harvard.edu/abs/2012MNRAS.425.1819S | Silverman+ 2012]].
+Uncertainties are computed with a simple Monte Carlo routine based on [[http://adsabs.harvard.edu/abs/2016ApJ...827...90L | Liu+ 2016]].
 
 **Important:** To run compute_features.py, the PyAstronomy package
-has to be installed in the same environment as the tardis package.
+has to be installed in the same environment as tardis.
 Currently using PyAstronomy v11.0, which can be found at
-http://www.hs.uni-hamburg.de/DE/Ins/Per/Czesla/PyA/PyA/index.html
+[[http://www.hs.uni-hamburg.de/DE/Ins/Per/Czesla/PyA/PyA/index.html]].
 
 ![image](images/example_spectrum.png)
 
@@ -119,6 +117,10 @@ D = cp.Compute_Uncertainty(D=D, smoothing_window=17,
 #Make spectrum plot where features are highlighted.
 cp.Plot_Spectra(D, './docu/images/example_spectrum.png',
                 show_fig=True, save_fig=True)
+                
+print 'pEW of main Si feature (f7) = ', D['pEW_f7'], '+-', D['pEW_unc_f7']
+print 'Velocity of weak Si feature (f6) = ', D['velocity_f6'], '+-',\
+      D['velocity_unc_f6']
 ```
 
 
