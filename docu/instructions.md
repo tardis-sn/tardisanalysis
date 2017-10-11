@@ -85,7 +85,8 @@ by replacing ``mode='virtual'`` with ``mode='real'`` in the above example.:
 
 With ``compute_features.py``, one can compute the pEW, depth and velocity
 of selected spectral features. The routine that define the features and
-the calculations are based on [[http://adsabs.harvard.edu/abs/2012MNRAS.425.1819S | Silverman+ 2012]].
+the calculations are based on [Liu+ 2016](http://adsabs.harvard.edu/abs/2016ApJ...827...90L)
+[[http://adsabs.harvard.edu/abs/2012MNRAS.425.1819S | Silverman+ 2012]].
 Uncertainties are computed with a simple Monte Carlo routine based on [[http://adsabs.harvard.edu/abs/2016ApJ...827...90L | Liu+ 2016]].
 
 **Important:** To run compute_features.py, the PyAstronomy package
