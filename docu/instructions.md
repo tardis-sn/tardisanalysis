@@ -80,3 +80,47 @@ A Kromer-type plot for the real packet population may be generated analogously
 by replacing ``mode='virtual'`` with ``mode='real'`` in the above example.:
 
 ![image](images/kromer_plot_example_real.png)
+
+## compute_features.py
+
+With ``compute_features.py``, one can compute the pEW, depth and velocity
+of selected spectral features. The routine that define the features and
+the calculations are based on [Silverman+ 2012](http://adsabs.harvard.edu/abs/2012MNRAS.425.1819S).
+Uncertainties are computed with a simple Monte Carlo routine based on [Liu+ 2016](http://adsabs.harvard.edu/abs/2016ApJ...827...90L).
+
+**Important:** To run compute_features.py, the PyAstronomy package
+has to be installed in the same environment as tardis.
+Currently using PyAstronomy v11.0, which can be found [here](http://www.hs.uni-hamburg.de/DE/Ins/Per/Czesla/PyA/PyA/index.html).
+
+![image](images/example_spectrum.png)
+
+```
+import tardis
+import compute_features as cp
+
+sim = tardis.run_tardis('./docu/inputs/loglum-8.538.yml',
+                        './docu/inputs/kurucz_cd23_chianti_H_He.h5') 
+
+#Get wavelength and flux values as arrays.
+wavelength = sim.runner.spectrum_virtual.wavelength[::-1].value
+flux = sim.runner.spectrum_virtual.luminosity_density_lambda[::-1].value
+
+#Compute features
+D = cp.Analyse_Spectra(wavelength=wavelength, flux=flux,
+  redshift=0., extinction=-0.014, smoothing_window=17).run_analysis()
+
+#Compute corresponding uncertainties.
+D = cp.Compute_Uncertainty(D=D, smoothing_window=17,
+                           N_MC_runs=1000).run_uncertainties()
+
+#Make spectrum plot where features are highlighted.
+cp.Plot_Spectra(D, './docu/images/example_spectrum.png',
+                show_fig=True, save_fig=True)
+                
+print 'pEW of main Si feature (f7) = ', D['pEW_f7'], '+-', D['pEW_unc_f7']
+print 'Velocity of weak Si feature (f6) = ', D['velocity_f6'], '+-',\
+      D['velocity_unc_f6']
+```
+
+
+
