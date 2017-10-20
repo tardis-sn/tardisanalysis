@@ -6,7 +6,11 @@ import logging
 import numpy as np
 import astropy.units as units
 import astropy.constants as csts
-import astropy.analytic_functions as af
+try:
+    import astropy.modeling.blackbody as abb
+except ImportError:  # for astropy version < 2.0
+    import astropy.analytic_functions as abb
+
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -412,7 +416,7 @@ class tardis_kromer_plotter(object):
                 reti.set_facecolor(colors[i])
                 reti.set_edgecolor(colors[i])
                 reti.set_linewidth(0)
-                reti.xy[:, 1] *= Lnorm
+                reti.xy[:, 1] *= Lnorm.to('erg / s').value
 
         self.ax.plot(self.mdl.spectrum_wave,
                      self.mdl.spectrum_luminosity,
@@ -421,9 +425,9 @@ class tardis_kromer_plotter(object):
     def _generate_photosphere_part(self):
         """generate the photospheric input spectrum part of the Kromer plot"""
 
-        Lph = (af.blackbody_lambda(self.mdl.spectrum_wave, self.mdl.t_inner) *
+        Lph = (abb.blackbody_lambda(self.mdl.spectrum_wave, self.mdl.t_inner) *
                4 * np.pi**2 * self.mdl.R_phot**2 * units.sr).to(
-                   "erg / AA / s")
+                   "erg / (AA s)")
 
         self.ax.plot(self.mdl.spectrum_wave,
                      Lph, color="red", ls="dashed")
@@ -455,7 +459,7 @@ class tardis_kromer_plotter(object):
                 reti.set_facecolor(colors[i])
                 reti.set_edgecolor(colors[i])
                 reti.set_linewidth(0)
-                reti.xy[:, 1] *= Lnorm
+                reti.xy[:, 1] *= Lnorm.to('erg / s').value
 
     def _generate_and_add_colormap(self):
         """generate the custom color map, linking colours with atomic
