@@ -397,7 +397,7 @@ class tardis_kromer_plotter(object):
         weights = [self.weights_noint, self.weights_escat]
         colors = ["black", "grey"]
 
-        for zi in xrange(1, self.zmax+1):
+        for zi in range(1, self.zmax+1):
             mask = self.line_out_infos.atomic_number.values == zi
             lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
             weights.append(self.line_out_L[mask] /
@@ -408,8 +408,10 @@ class tardis_kromer_plotter(object):
         for w in weights:
             Lnorm += np.sum(w)
 
-        ret = self.ax.hist(lams, bins=self.bins, stacked=True,
-                           histtype="stepfilled", normed=True, weights=weights)
+        lams = [tmp_lam.value for tmp_lam in lams]
+        weights = [tmp_wt.value for tmp_wt in weights]
+        ret = self.ax.hist(lams, bins=self.bins.value, stacked=True,
+                           histtype="stepfilled", density=True, weights=weights)
 
         for i, col in enumerate(ret[-1]):
             for reti in col:
@@ -439,7 +441,7 @@ class tardis_kromer_plotter(object):
         weights = []
         colors = []
 
-        for zi in xrange(1, self.zmax+1):
+        for zi in range(1, self.zmax+1):
             mask = self.line_in_infos.atomic_number.values == zi
             lams.append((csts.c.cgs / self.line_in_nu[mask]).to(units.AA))
             weights.append(self.line_in_L[mask] /
@@ -450,8 +452,10 @@ class tardis_kromer_plotter(object):
         for w in weights:
             Lnorm -= np.sum(w)
 
-        ret = self.pax.hist(lams, bins=self.bins, stacked=True,
-                            histtype="stepfilled", normed=True,
+        lams = [tmp_l.value for tmp_l in lams]
+        weights = [tmp_wt.value for tmp_wt in weights]
+        ret = self.pax.hist(lams, bins=self.bins.value, stacked=True,
+                            histtype="stepfilled", density=True,
                             weights=weights)
 
         for i, col in enumerate(ret[-1]):
@@ -466,7 +470,7 @@ class tardis_kromer_plotter(object):
         numbers"""
 
         values = [self.cmap(float(i) / float(self.zmax))
-                  for i in xrange(1, self.zmax+1)]
+                  for i in range(1, self.zmax+1)]
 
         custcmap = matplotlib.colors.ListedColormap(values)
         bounds = np.arange(self.zmax+1) + 0.5
@@ -474,7 +478,7 @@ class tardis_kromer_plotter(object):
         mappable = cm.ScalarMappable(norm=norm, cmap=custcmap)
         mappable.set_array(np.linspace(1, self.zmax + 1, 256))
         labels = [inv_elements[zi].capitalize()
-                  for zi in xrange(1, self.zmax+1)]
+                  for zi in range(1, self.zmax+1)]
 
         mainax = self.ax
         cbar = plt.colorbar(mappable, ax=mainax)
