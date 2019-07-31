@@ -410,7 +410,7 @@ class tardis_kromer_plotter(object):
 
         lams = [tmp_lam.value for tmp_lam in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
-        ret = self.ax.hist(lams, bins=self.bins.value, stacked=True,
+        ret = self.ax.hist(lams, bins=self.bins, stacked=True,
                            histtype="stepfilled", density=True, weights=weights)
 
         for i, col in enumerate(ret[-1]):
@@ -454,7 +454,7 @@ class tardis_kromer_plotter(object):
 
         lams = [tmp_l.value for tmp_l in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
-        ret = self.pax.hist(lams, bins=self.bins.value, stacked=True,
+        ret = self.pax.hist(lams, bins=self.bins, stacked=True,
                             histtype="stepfilled", density=True,
                             weights=weights)
 
