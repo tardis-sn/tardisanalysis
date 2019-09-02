@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 import astropy.units as units
 
@@ -37,6 +38,17 @@ class CodeComparisonOutputFile(object):
             sim.model.time_explosion.to(units.day).value for sim in simulations
         ]
         return times
+ 
+    @staticmethod
+    def get_velocity_grid_from_simulations(simulations):
+        v_middles = [
+            sim.model.v_middle.to(units.km / units.s).value for sim in simulations
+        ]
+        min_delta_v = np.min([np.diff(v_middle).min() for v_middle in v_middles])
+        v_min = np.min([v_middle.min() for v_middle in v_middles])
+        v_max = np.max([v_middle.max() for v_middle in v_middles])
+        N_shells = round((v_max - v_min) / min_delta_v) + 2
+        return np.linspace(v_min, v_max, N_shells)
 
     @classmethod
     def from_simulations(cls, simulations, model_name):
@@ -76,3 +88,19 @@ class SpectralOutputFile(CodeComparisonOutputFile):
 class TGasOutputFile(CodeComparisonOutputFile):
     data_type = 'tgas'
     column_description = '#vel_mid[km/s] Tgas_t0[K] Tgas_t1[K] ... Tgas_tn[K]'
+
+    @classmethod
+    def get_data_first_column(cls, simulations):
+        return cls.get_velocity_grid_from_simulations(simulations)
+
+    @classmethod
+    def get_data_table(cls, simulations):
+        v_interp = cls.get_data_first_column(simulations)
+
+        t_electrons = []
+        for sim in simulations:
+            v = sim.model.v_middle.to(units.km / units.s).value
+            t_electron = np.interp(v_interp, v, sim.plasma.t_electrons,
+                                   left=1e-99, right=1e-99)
+            t_electrons.append(t_electron)
+        return pd.DataFrame(np.vstack(t_electrons)).T
