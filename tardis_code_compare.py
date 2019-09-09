@@ -124,3 +124,32 @@ class EdenOutputFile(VelocityInterpolatedOutputFile):
     @staticmethod
     def get_interpolation_values(sim):
         return sim.plasma.electron_densities.values
+
+
+# TODO: Finish me!
+class IonFracOutputFile(VelocityInterpolatedOutputFile):
+    data_type = 'ionfrac'
+    column_description = '#vel_mid[km/s] temp[K] ne[/cm^3]'
+
+    def __init__(self, times, data_table, model_name, data_first_column,
+                 species='ca'):
+        super().__init__(times, data_table, model_name, data_first_column)
+        self.species = species
+    
+    @property
+    def fname(self):
+        return self.data_type + '_{}_{}_tardis.txt'.format(self.species,
+                                                           self.model_name)
+    
+    def write(self, dest='.'):
+        path = os.path.join(dest, self.fname)
+        with open(path, mode='w+') as f:
+            f.write('#NTIMES: {}\n'.format(len(self.times)))
+            #f.write('#NSTAGES: {}\n'.format()
+            f.write('#TIMES[d]: ' + self.times_str + '\n')
+            for i, time in enumerate(self.times):
+                f.write('#\n#TIME: {}\n'.format(time))
+                # TODO: write NVEL
+                f.write(self.column_description + '\n') # TODO: Add species columns
+                self.data_table[i].to_csv(f, index=False, float_format='%.6E',
+                                          sep=' ', header=False)
