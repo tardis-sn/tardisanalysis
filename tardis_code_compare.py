@@ -129,7 +129,7 @@ class EdenOutputFile(VelocityInterpolatedOutputFile):
         return sim.plasma.electron_densities.values
 
 
-# TODO: Finish me!
+
 class IonFracOutputFile(VelocityInterpolatedOutputFile):
     data_type = 'ionfrac'
     column_description = '#vel_mid[km/s]'
@@ -154,12 +154,47 @@ class IonFracOutputFile(VelocityInterpolatedOutputFile):
         with open(path, mode='w+') as f:
             f.write('#NTIMES: {}\n'.format(len(self.times)))
             f.write('#NSTAGES: {}\n'.format(self.species_num))
-            f.write('#TIMES[d]: ' + self.times_str + '\n')
+            f.write('#TIMES[d]: ' + self.times_str + '\n#\n')
             for i, time in enumerate(self.times):
-                f.write('#\n#TIME: {}\n'.format(time))
+                f.write('#TIME: {}\n'.format(time))
                 f.write('#NVEL: {}\n'.format(len(self.vel_mid)))
                 ion_df = self.data_table[i].loc[self.species_num].T
                 ion_df.insert(0, 'vel_mid', self.vel_mid)
                 f.write(self.column_description + '\n')
                 ion_df.to_csv(f, index=False, float_format='%.6E',
                                           sep=' ', header=False)
+
+class PhysicalPropertyOutputFile(VelocityInterpolatedOutputFile):
+    data_type = 'phys'
+    column_description = '#vel_mid[km/s] temp[K] rho[gcc] ne[/cm^3] natom[/cm^3]'
+
+    def __init__(self, times, data_table, model_name, data_first_column,
+                 vel_mid, temp, rho, ne):
+        super().__init__(times, data_table, model_name, data_first_column)
+        self.vel_mid = vel_mid
+        self.temp = temp
+        self.rho = rho
+        self.ne = ne
+
+    @property
+    def fname(self):
+        return self.data_type + '_{}_tardis.txt'.format(self.model_name)
+
+    def write(self, dest='.'):
+        path = os.path.join(dest, self.fname)
+        with open(path, mode='w+') as f:
+            f.write('#NTIMES: {}\n'.format(len(self.times)))
+            f.write('#TIMES[d]: ' + self.times_str + '\n#\n')
+            for i, time in enumerate(self.times):
+                f.write('#TIME: {}\n'.format(time))
+                f.write('#NVEL: {}\n'.format(len(self.vel_mid)))
+                natom = np.sum(self.data_table[i].values, axis=0)
+                df = pd.DataFrame()
+                df.insert(0, 'natom', natom)
+                df.insert(0, 'ne', self.ne[i])
+                df.insert(0, 'rho', self.rho[i])
+                df.insert(0, 'temp', self.temp[i])
+                df.insert(0, 'vel_mid', self.vel_mid)
+                f.write(self.column_description + '\n')
+                df.to_csv(f, index=False, float_format='%.6E',
+                          sep=' ', header=False)
