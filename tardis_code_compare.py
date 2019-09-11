@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import astropy.units as units
 
+from pyne import nucname
+
 
 class CodeComparisonOutputFile(object):
     first_column_name = 'VEL'
@@ -10,7 +12,8 @@ class CodeComparisonOutputFile(object):
     def __init__(self, times, data_table, model_name, data_first_column):
         self.times = times
         self.data_table = data_table
-        self.data_table.insert(0, 'wav', data_first_column)
+        if not data_first_column is None:
+            self.data_table.insert(0, 'wav', data_first_column)
         self.model_name = model_name
 
     @property
@@ -129,12 +132,17 @@ class EdenOutputFile(VelocityInterpolatedOutputFile):
 # TODO: Finish me!
 class IonFracOutputFile(VelocityInterpolatedOutputFile):
     data_type = 'ionfrac'
-    column_description = '#vel_mid[km/s] temp[K] ne[/cm^3]'
+    column_description = '#vel_mid[km/s]'
 
     def __init__(self, times, data_table, model_name, data_first_column,
-                 species='ca'):
+                 vel_mid, species='Ca'):
         super().__init__(times, data_table, model_name, data_first_column)
         self.species = species
+        self.vel_mid = vel_mid
+        self.species_num = nucname.name_zz[species]
+        ion_columns = ' '.join([''.join([species,str(i)]) for i in range(self.species_num)])
+        self.column_description = ' '.join([self.column_description, ion_columns])
+
     
     @property
     def fname(self):
@@ -145,11 +153,13 @@ class IonFracOutputFile(VelocityInterpolatedOutputFile):
         path = os.path.join(dest, self.fname)
         with open(path, mode='w+') as f:
             f.write('#NTIMES: {}\n'.format(len(self.times)))
-            #f.write('#NSTAGES: {}\n'.format()
+            f.write('#NSTAGES: {}\n'.format(self.species_num))
             f.write('#TIMES[d]: ' + self.times_str + '\n')
             for i, time in enumerate(self.times):
                 f.write('#\n#TIME: {}\n'.format(time))
-                # TODO: write NVEL
-                f.write(self.column_description + '\n') # TODO: Add species columns
-                self.data_table[i].to_csv(f, index=False, float_format='%.6E',
+                f.write('#NVEL: {}\n'.format(len(self.vel_mid)))
+                ion_df = self.data_table[i].loc[self.species_num].T
+                ion_df.insert(0, 'vel_mid', self.vel_mid)
+                f.write(self.column_description + '\n')
+                ion_df.to_csv(f, index=False, float_format='%.6E',
                                           sep=' ', header=False)
