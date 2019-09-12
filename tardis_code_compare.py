@@ -129,39 +129,65 @@ class EdenOutputFile(VelocityInterpolatedOutputFile):
         return sim.plasma.electron_densities.values
 
 
-class IonFracOutputFile(VelocityInterpolatedOutputFile):
+class IonFracOutputFile(CodeComparisonOutputFile):
     data_type = 'ionfrac'
     column_description = '#vel_mid[km/s]'
 
     def __init__(self, times, data_table, model_name, data_first_column,
-                 vel_mid, species='Ca'):
-        super().__init__(times, data_table, model_name, data_first_column)
+                 species='Ca'):
+        self.times = times
+        self.data_table = data_table
+        self.model_name = model_name
+        self.data_first_column = data_first_column
         self.species = species
-        self.vel_mid = vel_mid
         self.species_num = nucname.name_zz[species]
-        ion_columns = ' '.join([''.join([species,str(i)]) for i in range(self.species_num)])
-        self.column_description = ' '.join([self.column_description, ion_columns])
+        ion_columns = ' '.join(
+            [''.join([species, str(i)]) for i in range(self.species_num + 1)]
+        )
+        self.column_description = ' '.join(
+            [self.column_description, ion_columns]
+        )
 
-    
     @property
     def fname(self):
-        return self.data_type + '_{}_{}_tardis.txt'.format(self.species,
-                                                           self.model_name)
-    
+        fname = self.data_type
+        fname += '_{}_{}_tardis.txt'.format(self.species.lower(),
+                                            self.model_name)
+        return fname
+
     def write(self, dest='.'):
         path = os.path.join(dest, self.fname)
         with open(path, mode='w+') as f:
             f.write('#NTIMES: {}\n'.format(len(self.times)))
-            f.write('#NSTAGES: {}\n'.format(self.species_num))
-            f.write('#TIMES[d]: ' + self.times_str + '\n#\n')
+            f.write('#NSTAGES: {}\n'.format(self.species_num + 1))
+            f.write('#TIMES[d]: ' + self.times_str + '\n')
             for i, time in enumerate(self.times):
-                f.write('#TIME: {}\n'.format(time))
-                f.write('#NVEL: {}\n'.format(len(self.vel_mid)))
-                ion_df = self.data_table[i].loc[self.species_num].T
-                ion_df.insert(0, 'vel_mid', self.vel_mid)
+                vel_mid = self.data_first_column[i]
+                f.write('#\n#TIME: {}\n'.format(time))
+                f.write('#NVEL: {}\n'.format(len(vel_mid)))
+                ion_df = self.data_table[i]
+                ion_df.insert(0, 'vel_mid', vel_mid)
                 f.write(self.column_description + '\n')
                 ion_df.to_csv(f, index=False, float_format='%.6E',
-                                          sep=' ', header=False)
+                              sep=' ', header=False)
+
+    @staticmethod
+    def get_data_first_column(simulations):
+        v = [sim.model.v_middle.to(units.km / units.s).value
+             for sim in simulations]
+        return v
+
+    @classmethod
+    def from_simulations(cls, simulations, model_name, species='Ca'):
+        species_num = nucname.name_zz[species]
+        times = cls.get_times_from_simulations(simulations)
+        data_first_column = cls.get_data_first_column(simulations)
+        data_tables = []
+        for sim in simulations:
+            ion_density = sim.plasma.ion_number_density.loc[species_num].T
+            ion_density = ion_density.divide(ion_density.sum(axis=1), axis=0)
+            data_tables.append(ion_density)
+        return cls(times, data_tables, model_name, data_first_column, species)
 
 
 class PhysicalPropertyOutputFile(CodeComparisonOutputFile):
