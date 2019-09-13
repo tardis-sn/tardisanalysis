@@ -137,12 +137,13 @@ class IonFracOutputFile(CodeComparisonOutputFile):
                  species='Ca'):
         self.times = times
         self.data_table = data_table
+        self.num_stages = data_table[0].shape[1]
         self.model_name = model_name
         self.data_first_column = data_first_column
         self.species = species
         self.species_num = nucname.name_zz[species]
         ion_columns = ' '.join(
-            [''.join([species, str(i)]) for i in range(self.species_num + 1)]
+            [''.join([species, str(i)]) for i in range(self.num_stages)]
         )
         self.column_description = ' '.join(
             [self.column_description, ion_columns]
@@ -159,7 +160,7 @@ class IonFracOutputFile(CodeComparisonOutputFile):
         path = os.path.join(dest, self.fname)
         with open(path, mode='w+') as f:
             f.write('#NTIMES: {}\n'.format(len(self.times)))
-            f.write('#NSTAGES: {}\n'.format(self.species_num + 1))
+            f.write('#NSTAGES: {}\n'.format(self.num_stages))
             f.write('#TIMES[d]: ' + self.times_str + '\n')
             for i, time in enumerate(self.times):
                 vel_mid = self.data_first_column[i]
@@ -178,7 +179,8 @@ class IonFracOutputFile(CodeComparisonOutputFile):
         return v
 
     @classmethod
-    def from_simulations(cls, simulations, model_name, species='Ca'):
+    def from_simulations(cls, simulations, model_name, species='Ca',
+                         num_stages=8):
         species_num = nucname.name_zz[species]
         times = cls.get_times_from_simulations(simulations)
         data_first_column = cls.get_data_first_column(simulations)
@@ -186,7 +188,7 @@ class IonFracOutputFile(CodeComparisonOutputFile):
         for sim in simulations:
             ion_density = sim.plasma.ion_number_density.loc[species_num].T
             ion_density = ion_density.divide(ion_density.sum(axis=1), axis=0)
-            data_tables.append(ion_density)
+            data_tables.append(ion_density.iloc[:, :num_stages])
         return cls(times, data_tables, model_name, data_first_column, species)
 
 
