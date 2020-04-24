@@ -76,6 +76,13 @@ plotter = tkp.tardis_kromer_plotter(minmodel, mode="virtual")
 plotter.generate_plot(xlim=(3000,1e4), twinx=True)
 ```
 
+If a large amount of elements are cluttering the colormap then a flag
+``nelements`` can be included, e.g.
+``plotter.generate_plot(xlim=(3000,1e4), twinx=True, nelements=10)``. This
+command will make the plot only include the n elements associated with the most
+line transitions; if not specified, then all elements in the model, with
+at least 1 transition, are included.
+
 A Kromer-type plot for the real packet population may be generated analogously
 by replacing ``mode='virtual'`` with ``mode='real'`` in the above example.:
 
