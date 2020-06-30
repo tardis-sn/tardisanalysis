@@ -81,7 +81,12 @@ If a large amount of elements are cluttering the colormap then a flag
 ``plotter.generate_plot(xlim=(3000,1e4), twinx=True, nelements=10)``. This
 command will make the plot only include the n elements associated with the most
 line transitions; if not specified, then all elements in the model, with
-at least 1 transition, are included.
+at least 1 transition, are included. If the flag ``nelements`` is set, it is
+possible to wind up with a Kromer plot with colourless regions of absorption
+and/or emission. This is a result of the value of ``nelements`` being too low,
+causing elements that have significant contributions to the spectrum to be
+removed. A simple fix to this is to increase the user-specified value of
+``nelements``.
 
 A Kromer-type plot for the real packet population may be generated analogously
 by replacing ``mode='virtual'`` with ``mode='real'`` in the above example.:
