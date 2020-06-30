@@ -397,25 +397,26 @@ class tardis_kromer_plotter(object):
     @property
     def line_info(self):
         """produces list of elements to be included in the kromer plot"""
+        line_out_infos_within_xlims = self.line_out_infos.loc[
+            (self.line_out_infos.wavelength >= self._xlim[0])
+            & (self.line_out_infos.wavelength <= self._xlim[1])
+        ]
         self._elements_in_kromer_plot = np.c_[
             np.unique(
-                self.line_out_infos.atomic_number.values, return_counts=True
+                line_out_infos_within_xlims.atomic_number.values,
+                return_counts=True,
             )
         ]
-        print(self._elements_in_kromer_plot, "\n\n")
         if len(self._elements_in_kromer_plot) > self._nelements:
             self._elements_in_kromer_plot = self._elements_in_kromer_plot[
                 np.argsort(self._elements_in_kromer_plot[:, 1])[::-1]
             ]
-            print(self._elements_in_kromer_plot, "\n\n")
             self._elements_in_kromer_plot = self._elements_in_kromer_plot[
                 : self._nelements
             ]
-            print(self._elements_in_kromer_plot, "\n\n")
             self._elements_in_kromer_plot = self._elements_in_kromer_plot[
                 np.argsort(self._elements_in_kromer_plot[:, 0])
             ]
-            print(self._elements_in_kromer_plot, "\n\n")
         else:
             self._nelements = len(self._elements_in_kromer_plot)
         return self._elements_in_kromer_plot
@@ -485,7 +486,6 @@ class tardis_kromer_plotter(object):
 
         self._cmap = cmap
         self._ax = ax
-        self._xlim = xlim
         self._ylim = ylim
         self._twinx = twinx
 
@@ -493,10 +493,16 @@ class tardis_kromer_plotter(object):
             self._nelements = len(
                 np.unique(self.line_out_infos.atomic_number.values)
             )
-            # print("baa", self._nelements)
-
         else:
             self._nelements = nelements
+
+        if xlim == None:
+            self._xlim = [
+                np.min(self.mdl.spectrum_wave).value,
+                np.max(self.mdl.spectrum_wave).value,
+            ]
+        else:
+            self._xlim = xlim
 
         if bins is None:
             self._bins = self.mdl.spectrum_wave[::-1]
