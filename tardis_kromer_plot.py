@@ -23,16 +23,19 @@ import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
-elements = {'neut': 0, 'h': 1, 'he': 2, 'li': 3, 'be': 4, 'b': 5, 'c': 6, 'n': 7, 'o': 8, 'f': 9, 'ne': 10,
-            'na': 11, 'mg': 12, 'al': 13, 'si': 14, 'p': 15, 's': 16, 'cl': 17, 'ar': 18, 'k':  19, 'ca':20,
-            'sc': 21, 'ti': 22, 'v': 23, 'cr': 24, 'mn': 25, 'fe': 26, 'co': 27, 'ni': 28, 'cu': 29, 'zn': 30,
-            'ga': 31, 'ge': 32, 'as': 33, 'se': 34, 'br': 35, 'kr': 36, 'rb': 37, 'sr': 38, 'y': 39, 'zr': 40,
-            'nb': 41, 'mo': 42, 'tc': 43, 'ru': 44, 'rh': 45, 'pd': 46, 'ag': 47, 'cd': 48, 'in': 49, 'sn': 50,
-            'sb': 51, 'te': 52, 'i': 53, 'xe': 54, 'cs': 55, 'ba': 56, 'la': 57, 'ce': 58, 'pr': 59, 'nd': 60,
-            'pm': 61, 'sm': 62, 'eu': 63, 'gd': 64, 'tb': 65, 'dy': 66, 'ho': 67, 'er': 68, 'tm': 69, 'yb': 70,
-            'lu': 71, 'hf': 72, 'ta': 73, 'w': 74, 're': 75, 'os': 76, 'ir': 77, 'pt': 78, 'au': 79, 'hg': 80,
-            'tl': 81, 'pb': 82, 'bi': 83, 'po': 84, 'at': 85, 'rn': 86, 'fr': 87, 'ra': 88, 'ac': 89, 'th': 90,
-            'pa': 91, 'u': 92}
+elements = {'neut':0, 'h':1, 'he':2, 'li':3, 'be':4, 'b':5, 'c':6, 'n':7, 'o':
+            8, 'f':9, 'ne':10, 'na':11, 'mg':12, 'al':13, 'si':14, 'p':15, 's':
+            16, 'cl':17, 'ar':18, 'k': 19, 'ca':20, 'sc':21, 'ti':22, 'v':23,
+            'cr':24, 'mn':25, 'fe':26, 'co':27, 'ni':28, 'cu':29, 'zn':30,
+            'ga':31, 'ge':32, 'as':33, 'se':34, 'br':35, 'kr':36, 'rb':37,
+            'sr':38, 'y':39, 'zr':40, 'nb':41, 'mo':42, 'tc':43, 'ru':44, 'rh':
+            45, 'pd':46, 'ag':47, 'cd':48, 'in':49, 'sn':50, 'sb':51, 'te':52,
+            'i':53, 'xe':54, 'cs':55, 'ba':56, 'la':57, 'ce':58, 'pr':59, 'nd':
+            60, 'pm':61, 'sm':62, 'eu':63, 'gd':64, 'tb':65, 'dy':66, 'ho':67,
+            'er':68, 'tm':69, 'yb':70, 'lu':71, 'hf':72, 'ta':73, 'w':74, 're':
+            75, 'os':76, 'ir':77, 'pt':78, 'au':79, 'hg':80, 'tl':81, 'pb':82,
+            'bi':83, 'po':84, 'at':85, 'rn':86, 'fr':87, 'ra':88, 'ac':89,
+            'th':90, 'pa':91, 'u':92}
 inv_elements = dict([(v, k) for k, v in elements.items()])
 
 class tardis_kromer_plotter(object):
@@ -305,20 +308,28 @@ class tardis_kromer_plotter(object):
     @property
     def line_info(self):
         """produces list of elements to be included in the kromer plot"""
-        ids_of_elements = list(Counter(self.line_out_infos.atomic_number.values).keys()) # list of atomic no. of all transitions
-        freq_of_elements = list(Counter(self.line_out_infos.atomic_number.values).values()) # list of the freq. of transitions for each element
-        self._elements_in_kromer_plot = np.c_[ids_of_elements, freq_of_elements] # array of atomic no. and line transition freq.
-        sorting_order = np.argsort(self._elements_in_kromer_plot[:,0])
-        self._elements_in_kromer_plot = self._elements_in_kromer_plot[sorting_order,:] # array sorted by increasing atomic no.
-        if len(ids_of_elements) > self._nelements: # if list of elements is longer than user-specified amount
-            sorting_order = np.argsort(self._elements_in_kromer_plot[:,1])
-            self._elements_in_kromer_plot = np.flip(self._elements_in_kromer_plot[sorting_order,:],0) # array sorted by decreasing line transition freq.
-            self._elements_in_kromer_plot = self._elements_in_kromer_plot[:self._nelements] # array truncated to only include the nth most frequent elements
-            sorting_order = np.argsort(self._elements_in_kromer_plot[:,0])
-            self._elements_in_kromer_plot = self._elements_in_kromer_plot[sorting_order,:] # array sorted by increasing atomic no.
-        else: # if list of elements is less than user-specified amount
-            self._nelements = len(ids_of_elements) # just use full list of elements in the model
-        return self._elements_in_kromer_plot # return array of desired elements sorted by increasing atomic no.
+        ids_of_elements = list(Counter(
+                          self.line_out_infos.atomic_number.values).keys())
+        freq_of_elements = list(Counter(
+                           self.line_out_infos.atomic_number.values).values())
+        self._elements_in_kromer_plot = np.c_[ids_of_elements,
+                                        freq_of_elements]
+        sorting_order = np.argsort(self._elements_in_kromer_plot[:, 0])
+        self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                                        sorting_order, :]
+        if len(ids_of_elements) > self._nelements:
+            sorting_order = np.argsort(self._elements_in_kromer_plot[:, 1])
+            self._elements_in_kromer_plot = np.flip(
+                                            self._elements_in_kromer_plot[
+                                            sorting_order, :], 0)
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                                            :self._nelements]
+            sorting_order = np.argsort(self._elements_in_kromer_plot[:, 0])
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                                            sorting_order, :]
+        else:
+            self._nelements = len(ids_of_elements)
+        return self._elements_in_kromer_plot
 
     def _reset_cache(self):
         """Reset cached variables - only needed in case the model is changed
@@ -381,8 +392,9 @@ class tardis_kromer_plotter(object):
         self._ylim = ylim
         self._twinx = twinx
 
-        if nelements == None: # if no limit has been specified for no. of elements to include
-            self._nelements = len(Counter(self.line_out_infos.atomic_number.values).keys()) # this gives the no. of elements that are in the model that also have >0 line transitions
+        if nelements == None:
+            self._nelements = len(Counter(
+                              self.line_out_infos.atomic_number.values).keys())
         else:
             self._nelements = nelements
 
@@ -424,9 +436,9 @@ class tardis_kromer_plotter(object):
         weights = [self.weights_noint, self.weights_escat]
         colors = ["black", "grey"]
 
-        self.elements_in_kromer_plot = self.line_info # get list of elements to be included in kromer plot
+        self.elements_in_kromer_plot = self.line_info
 
-        for zi in self.elements_in_kromer_plot[:,0]:
+        for zi in self.elements_in_kromer_plot[:, 0]:
             mask = self.line_out_infos.atomic_number.values == zi
             lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
             weights.append(self.line_out_L[mask] /
@@ -441,7 +453,8 @@ class tardis_kromer_plotter(object):
         lams = [tmp_lam.value for tmp_lam in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
         ret = self.ax.hist(lams, bins=self.bins.value, stacked=True,
-                           histtype="stepfilled", density=True, weights=weights)
+                           histtype="stepfilled", density=True,
+                           weights=weights)
 
         for i, col in enumerate(ret[-1]):
             for reti in col:
@@ -457,9 +470,9 @@ class tardis_kromer_plotter(object):
     def _generate_photosphere_part(self):
         """generate the photospheric input spectrum part of the Kromer plot"""
 
-        Lph = (abb.blackbody_lambda(self.mdl.spectrum_wave, self.mdl.t_inner) *
-               4 * np.pi**2 * self.mdl.R_phot**2 * units.sr).to(
-                   "erg / (AA s)")
+        Lph = (abb.blackbody_lambda(self.mdl.spectrum_wave, self.mdl.t_inner)
+               * 4 * np.pi**2 * self.mdl.R_phot**2 * units.sr).to(
+               "erg / (AA s)")
 
         self.ax.plot(self.mdl.spectrum_wave,
                      Lph, color="red", ls="dashed")
@@ -471,9 +484,9 @@ class tardis_kromer_plotter(object):
         weights = []
         colors = []
 
-        self.elements_in_kromer_plot = self.line_info # get list of elements to be included in kromer plot
+        self.elements_in_kromer_plot = self.line_info
 
-        for zi in self.elements_in_kromer_plot[:,0]:
+        for zi in self.elements_in_kromer_plot[:, 0]:
             mask = self.line_in_infos.atomic_number.values == zi
             lams.append((csts.c.cgs / self.line_in_nu[mask]).to(units.AA))
             weights.append(self.line_in_L[mask] /
@@ -502,7 +515,7 @@ class tardis_kromer_plotter(object):
         """generate the custom color map, linking colours with atomic
         numbers"""
 
-        self.elements_in_kromer_plot = self.line_info # get list of elements to be included in kromer plot
+        self.elements_in_kromer_plot = self.line_info
 
         values = [self.cmap(float(i) / float(self._nelements))
                   for i in range(self._nelements)]
@@ -513,7 +526,7 @@ class tardis_kromer_plotter(object):
         mappable = cm.ScalarMappable(norm=norm, cmap=custcmap)
         mappable.set_array(np.linspace(1, self.zmax + 1, 256))
         labels = [inv_elements[zi].capitalize()
-                  for zi in self.elements_in_kromer_plot[:,0]]
+                  for zi in self.elements_in_kromer_plot[:, 0]]
 
         mainax = self.ax
         cbar = plt.colorbar(mappable, ax=mainax)
