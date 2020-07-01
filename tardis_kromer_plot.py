@@ -23,8 +23,11 @@ plt.rcdefaults()
 
 logger = logging.getLogger(__name__)
 
-elements = pd.read_csv('elements.csv', names=['chem_symbol', 'atomic_no'])
-inv_elements = pd.Series(elements['chem_symbol'],index=elements['atomic_no']).to_dict()
+elements = pd.read_csv("elements.csv", names=["chem_symbol", "atomic_no"])
+inv_elements = pd.Series(
+    elements["chem_symbol"], index=elements["atomic_no"]
+).to_dict()
+
 
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.

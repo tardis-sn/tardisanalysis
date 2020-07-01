@@ -7,8 +7,11 @@ import matplotlib.pyplot as plt
 from tardis_minimal_model import minimal_model
 import pandas as pd
 
-elements = pd.read_csv('elements.csv', names=['chem_symbol', 'atomic_no'])
-inv_elements = pd.Series(elements['chem_symbol'],index=elements['atomic_no']).to_dict()
+elements = pd.read_csv("elements.csv", names=["chem_symbol", "atomic_no"])
+inv_elements = pd.Series(
+    elements["chem_symbol"], index=elements["atomic_no"]
+).to_dict()
+
 
 class line_identifier(object):
     def __init__(self, mdl):
