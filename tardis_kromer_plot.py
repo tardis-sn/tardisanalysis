@@ -24,11 +24,12 @@ plt.rcdefaults()
 
 logger = logging.getLogger(__name__)
 
-with open('elements.csv') as f:
+with open("elements.csv") as f:
     reader = csv.reader(f, skipinitialspace=True)
     elements = dict(reader)
 
 inv_elements = dict([(int(v), k) for k, v in elements.items()])
+
 
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.
@@ -458,8 +459,8 @@ class tardis_kromer_plotter(object):
             colors.append(self.cmap(float(ii) / float(self._nelements)))
 
         Lnorm = 0
-        for w in weights:
-            Lnorm += np.sum(w)
+        for w, lam in zip(weights, lams):
+            Lnorm += np.sum(w[(lam >= self.bins[0]) * (lam <= self.bins[-1])])
 
         lams = [tmp_lam.value for tmp_lam in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
@@ -517,8 +518,8 @@ class tardis_kromer_plotter(object):
             colors.append(self.cmap(float(ii) / float(self._nelements)))
 
         Lnorm = 0
-        for w in weights:
-            Lnorm -= np.sum(w)
+        for w, lam in zip(weights, lams):
+            Lnorm -= np.sum(w[(lam >= self.bins[0]) * (lam <= self.bins[-1])])
 
         lams = [tmp_l.value for tmp_l in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
