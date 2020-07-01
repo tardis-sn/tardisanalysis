@@ -7,6 +7,7 @@ import numpy as np
 import astropy.units as units
 import astropy.constants as csts
 import pandas as pd
+import csv
 
 try:
     import astropy.modeling.blackbody as abb
@@ -23,106 +24,11 @@ plt.rcdefaults()
 
 logger = logging.getLogger(__name__)
 
-"""the elements dictionary looks like this because this is how black linter
-formatted it - until this info is moved and stored in a separate file, it will
-remain here like this"""
-elements = {
-    "neut": 0,
-    "h": 1,
-    "he": 2,
-    "li": 3,
-    "be": 4,
-    "b": 5,
-    "c": 6,
-    "n": 7,
-    "o": 8,
-    "f": 9,
-    "ne": 10,
-    "na": 11,
-    "mg": 12,
-    "al": 13,
-    "si": 14,
-    "p": 15,
-    "s": 16,
-    "cl": 17,
-    "ar": 18,
-    "k": 19,
-    "ca": 20,
-    "sc": 21,
-    "ti": 22,
-    "v": 23,
-    "cr": 24,
-    "mn": 25,
-    "fe": 26,
-    "co": 27,
-    "ni": 28,
-    "cu": 29,
-    "zn": 30,
-    "ga": 31,
-    "ge": 32,
-    "as": 33,
-    "se": 34,
-    "br": 35,
-    "kr": 36,
-    "rb": 37,
-    "sr": 38,
-    "y": 39,
-    "zr": 40,
-    "nb": 41,
-    "mo": 42,
-    "tc": 43,
-    "ru": 44,
-    "rh": 45,
-    "pd": 46,
-    "ag": 47,
-    "cd": 48,
-    "in": 49,
-    "sn": 50,
-    "sb": 51,
-    "te": 52,
-    "i": 53,
-    "xe": 54,
-    "cs": 55,
-    "ba": 56,
-    "la": 57,
-    "ce": 58,
-    "pr": 59,
-    "nd": 60,
-    "pm": 61,
-    "sm": 62,
-    "eu": 63,
-    "gd": 64,
-    "tb": 65,
-    "dy": 66,
-    "ho": 67,
-    "er": 68,
-    "tm": 69,
-    "yb": 70,
-    "lu": 71,
-    "hf": 72,
-    "ta": 73,
-    "w": 74,
-    "re": 75,
-    "os": 76,
-    "ir": 77,
-    "pt": 78,
-    "au": 79,
-    "hg": 80,
-    "tl": 81,
-    "pb": 82,
-    "bi": 83,
-    "po": 84,
-    "at": 85,
-    "rn": 86,
-    "fr": 87,
-    "ra": 88,
-    "ac": 89,
-    "th": 90,
-    "pa": 91,
-    "u": 92,
-}
-inv_elements = dict([(v, k) for k, v in elements.items()])
+with open('elements.csv') as f:
+    reader = csv.reader(f, skipinitialspace=True)
+    elements = dict(reader)
 
+inv_elements = dict([(int(v), k) for k, v in elements.items()])
 
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.
