@@ -6,11 +6,13 @@ import logging
 import numpy as np
 import astropy.units as units
 import astropy.constants as csts
+import pandas as pd
+import csv
+
 try:
     import astropy.modeling.blackbody as abb
 except ImportError:  # for astropy version < 2.0
     import astropy.analytic_functions as abb
-
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -18,18 +20,15 @@ import matplotlib.lines as lines
 import matplotlib.cm as cm
 from tardis_minimal_model import minimal_model
 
+plt.rcdefaults()
+
 logger = logging.getLogger(__name__)
 
-elements = {'neut': 0, 'h': 1, 'he': 2, 'li': 3, 'be': 4, 'b': 5, 'c': 6, 'n':
-            7, 'o': 8, 'f': 9, 'ne': 10, 'na': 11, 'mg': 12, 'al': 13, 'si':
-            14, 'p': 15, 's': 16, 'cl': 17, 'ar': 18, 'k': 19,    'ca': 20,
-            'sc': 21, 'ti': 22, 'v': 23, 'cr': 24, 'mn': 25, 'fe': 26, 'co':
-            27, 'ni': 28, 'cu': 29, 'zn': 30, 'ga': 31, 'ge': 32, 'as': 33,
-            'se': 34, 'br': 35, 'kr': 36, 'rb': 37, 'sr': 38, 'y': 39,  'zr':
-            40, 'nb': 41, 'mo': 42, 'tc': 43, 'ru': 44, 'rh': 45, 'pd': 46,
-            'ag': 47, 'cd': 48}
-inv_elements = dict([(v, k) for k, v in elements.items()])
+with open('elements.csv') as f:
+    reader = csv.reader(f, skipinitialspace=True)
+    elements = dict(reader)
 
+inv_elements = dict([(int(v), k) for k, v in elements.items()])
 
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.
@@ -67,13 +66,14 @@ class tardis_kromer_plotter(object):
        of Two Carbon-Oxygen White Dwarfs" ApjL, 2013, 778, L18
 
     """
+
     def __init__(self, mdl, mode="real"):
 
         self._mode = None
         self.mode = mode
 
         self._mdl = None
-        self._zmax = 32
+        self._zmax = 100
         self._cmap = cm.jet
         self._xlim = None
         self._ylim = None
@@ -109,7 +109,7 @@ class tardis_kromer_plotter(object):
     def mode(self, val):
         known_modes = ["real", "virtual"]
         try:
-            assert(val in known_modes)
+            assert val in known_modes
         except AssertionError:
             raise ValueError("unknown mode")
         self._mode = val
@@ -122,13 +122,14 @@ class tardis_kromer_plotter(object):
     @mdl.setter
     def mdl(self, val):
         try:
-            assert(type(val) == minimal_model)
+            assert type(val) == minimal_model
         except AssertionError:
             raise ValueError("'mdl' must be either a minimal_model")
 
         if val.mode != self.mode:
-            raise ValueError("packet mode of minimal_model doesn't"
-                             " match requested mode")
+            raise ValueError(
+                "packet mode of minimal_model doesn't" " match requested mode"
+            )
         if not val.readin:
             raise ValueError("passing empty minimal_model; read in data first")
 
@@ -180,8 +181,7 @@ class tardis_kromer_plotter(object):
     def noint_mask(self):
         """Masking array, highlighting the packets that never interacted"""
         if self._noint_mask is None:
-            self._noint_mask = \
-                self.mdl.last_interaction_type == -1
+            self._noint_mask = self.mdl.last_interaction_type == -1
         return self._noint_mask
 
     @property
@@ -189,8 +189,7 @@ class tardis_kromer_plotter(object):
         """Masking array, highlighting the packets that performed Thomson
         scatterings"""
         if self._escat_mask is None:
-            self._escat_mask = \
-                self.mdl.last_interaction_type == 1
+            self._escat_mask = self.mdl.last_interaction_type == 1
         return self._escat_mask
 
     @property
@@ -198,8 +197,9 @@ class tardis_kromer_plotter(object):
         """Masking array, highlighting the packets that only performed Thomson
         scatterings"""
         if self._escatonly_mask is None:
-            tmp = ((self.mdl.last_line_interaction_in_id == -1) *
-                   (self.escat_mask)).astype(np.bool)
+            tmp = (
+                (self.mdl.last_line_interaction_in_id == -1) * (self.escat_mask)
+            ).astype(np.bool)
             self._escatonly_mask = tmp
         return self._escatonly_mask
 
@@ -208,45 +208,47 @@ class tardis_kromer_plotter(object):
         """Mask array, highlighting packets whose last interaction was with a
         line"""
         if self._line_mask is None:
-            self._line_mask = \
-                ((self.mdl.last_interaction_type > -1) *
-                 (self.mdl.last_line_interaction_in_id > -1))
+            self._line_mask = (self.mdl.last_interaction_type > -1) * (
+                self.mdl.last_line_interaction_in_id > -1
+            )
         return self._line_mask
 
     @property
     def lam_noint(self):
         """Wavelength of the non-interacting packets"""
         if self._lam_noint is None:
-            self._lam_noint = \
-                (csts.c.cgs /
-                 (self.mdl.packet_nus[self.noint_mask])).to(units.AA)
+            self._lam_noint = (
+                csts.c.cgs / (self.mdl.packet_nus[self.noint_mask])
+            ).to(units.AA)
         return self._lam_noint
 
     @property
     def lam_escat(self):
         """Wavelength of the purely electron scattering packets"""
         if self._lam_escat is None:
-            self._lam_escat = \
-                (csts.c.cgs /
-                 (self.mdl.packet_nus[self.escatonly_mask])).to(units.AA)
+            self._lam_escat = (
+                csts.c.cgs / (self.mdl.packet_nus[self.escatonly_mask])
+            ).to(units.AA)
         return self._lam_escat
 
     @property
     def weights_escat(self):
         """luminosity of the only electron scattering packets"""
         if self._weights_escat is None:
-            self._weights_escat = \
-                (self.mdl.packet_energies[self.escatonly_mask] /
-                 self.mdl.time_of_simulation)
+            self._weights_escat = (
+                self.mdl.packet_energies[self.escatonly_mask]
+                / self.mdl.time_of_simulation
+            )
         return self._weights_escat
 
     @property
     def weights_noint(self):
         """luminosity of the non-interacting packets"""
         if self._weights_noint is None:
-            self._weights_noint = \
-                (self.mdl.packet_energies[self.noint_mask] /
-                 self.mdl.time_of_simulation)
+            self._weights_noint = (
+                self.mdl.packet_energies[self.noint_mask]
+                / self.mdl.time_of_simulation
+            )
         return self._weights_noint
 
     @property
@@ -298,6 +300,33 @@ class tardis_kromer_plotter(object):
             self._line_in_L = tmp[self.line_mask]
         return self._line_in_L
 
+    @property
+    def line_info(self):
+        """produces list of elements to be included in the kromer plot"""
+        line_out_infos_within_xlims = self.line_out_infos.loc[
+            (self.line_out_infos.wavelength >= self._xlim[0])
+            & (self.line_out_infos.wavelength <= self._xlim[1])
+        ]
+        self._elements_in_kromer_plot = np.c_[
+            np.unique(
+                line_out_infos_within_xlims.atomic_number.values,
+                return_counts=True,
+            )
+        ]
+        if len(self._elements_in_kromer_plot) > self._nelements:
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                np.argsort(self._elements_in_kromer_plot[:, 1])[::-1]
+            ]
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                : self._nelements
+            ]
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                np.argsort(self._elements_in_kromer_plot[:, 0])
+            ]
+        else:
+            self._nelements = len(self._elements_in_kromer_plot)
+        return self._elements_in_kromer_plot
+
     def _reset_cache(self):
         """Reset cached variables - only needed in case the model is changed
         after initialisation"""
@@ -317,8 +346,16 @@ class tardis_kromer_plotter(object):
         self._line_out_nu = None
         self._line_out_L = None
 
-    def generate_plot(self, ax=None, cmap=cm.jet, bins=None, xlim=None,
-                      ylim=None, twinx=False):
+    def generate_plot(
+        self,
+        ax=None,
+        cmap=cm.jet,
+        bins=None,
+        xlim=None,
+        ylim=None,
+        nelements=None,
+        twinx=False,
+    ):
         """Generate the actual "Kromer" plot
 
         Parameters
@@ -355,9 +392,23 @@ class tardis_kromer_plotter(object):
 
         self._cmap = cmap
         self._ax = ax
-        self._xlim = xlim
         self._ylim = ylim
         self._twinx = twinx
+
+        if nelements == None:
+            self._nelements = len(
+                np.unique(self.line_out_infos.atomic_number.values)
+            )
+        else:
+            self._nelements = nelements
+
+        if xlim == None:
+            self._xlim = [
+                np.min(self.mdl.spectrum_wave).value,
+                np.max(self.mdl.spectrum_wave).value,
+            ]
+        else:
+            self._xlim = xlim
 
         if bins is None:
             self._bins = self.mdl.spectrum_wave[::-1]
@@ -397,12 +448,14 @@ class tardis_kromer_plotter(object):
         weights = [self.weights_noint, self.weights_escat]
         colors = ["black", "grey"]
 
-        for zi in range(1, self.zmax+1):
+        self.elements_in_kromer_plot = self.line_info
+
+        for zi in self.elements_in_kromer_plot[:, 0]:
             mask = self.line_out_infos.atomic_number.values == zi
             lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
-            weights.append(self.line_out_L[mask] /
-                           self.mdl.time_of_simulation)
-            colors.append(self.cmap(float(zi) / float(self.zmax)))
+            weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
+        for ii in range(self._nelements):
+            colors.append(self.cmap(float(ii) / float(self._nelements)))
 
         Lnorm = 0
         for w in weights:
@@ -410,29 +463,42 @@ class tardis_kromer_plotter(object):
 
         lams = [tmp_lam.value for tmp_lam in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
-        ret = self.ax.hist(lams, bins=self.bins.value, stacked=True,
-                           histtype="stepfilled", density=True, weights=weights)
+        ret = self.ax.hist(
+            lams,
+            bins=self.bins.value,
+            stacked=True,
+            histtype="stepfilled",
+            density=True,
+            weights=weights,
+        )
 
         for i, col in enumerate(ret[-1]):
             for reti in col:
                 reti.set_facecolor(colors[i])
                 reti.set_edgecolor(colors[i])
                 reti.set_linewidth(0)
-                reti.xy[:, 1] *= Lnorm.to('erg / s').value
+                reti.xy[:, 1] *= Lnorm.to("erg / s").value
 
-        self.ax.plot(self.mdl.spectrum_wave,
-                     self.mdl.spectrum_luminosity,
-                     color="blue", drawstyle="steps-post", lw=0.5)
+        self.ax.plot(
+            self.mdl.spectrum_wave,
+            self.mdl.spectrum_luminosity,
+            color="blue",
+            drawstyle="steps-post",
+            lw=0.5,
+        )
 
     def _generate_photosphere_part(self):
         """generate the photospheric input spectrum part of the Kromer plot"""
 
-        Lph = (abb.blackbody_lambda(self.mdl.spectrum_wave, self.mdl.t_inner) *
-               4 * np.pi**2 * self.mdl.R_phot**2 * units.sr).to(
-                   "erg / (AA s)")
+        Lph = (
+            abb.blackbody_lambda(self.mdl.spectrum_wave, self.mdl.t_inner)
+            * 4
+            * np.pi ** 2
+            * self.mdl.R_phot ** 2
+            * units.sr
+        ).to("erg / (AA s)")
 
-        self.ax.plot(self.mdl.spectrum_wave,
-                     Lph, color="red", ls="dashed")
+        self.ax.plot(self.mdl.spectrum_wave, Lph, color="red", ls="dashed")
 
     def _generate_absorption_part(self):
         """generate the absorption part of the Kromer plot"""
@@ -441,12 +507,14 @@ class tardis_kromer_plotter(object):
         weights = []
         colors = []
 
-        for zi in range(1, self.zmax+1):
+        self.elements_in_kromer_plot = self.line_info
+
+        for zi in self.elements_in_kromer_plot[:, 0]:
             mask = self.line_in_infos.atomic_number.values == zi
             lams.append((csts.c.cgs / self.line_in_nu[mask]).to(units.AA))
-            weights.append(self.line_in_L[mask] /
-                           self.mdl.time_of_simulation)
-            colors.append(self.cmap(float(zi) / float(self.zmax)))
+            weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
+        for ii in range(self._nelements):
+            colors.append(self.cmap(float(ii) / float(self._nelements)))
 
         Lnorm = 0
         for w in weights:
@@ -454,31 +522,42 @@ class tardis_kromer_plotter(object):
 
         lams = [tmp_l.value for tmp_l in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
-        ret = self.pax.hist(lams, bins=self.bins.value, stacked=True,
-                            histtype="stepfilled", density=True,
-                            weights=weights)
+        ret = self.pax.hist(
+            lams,
+            bins=self.bins.value,
+            stacked=True,
+            histtype="stepfilled",
+            density=True,
+            weights=weights,
+        )
 
         for i, col in enumerate(ret[-1]):
             for reti in col:
                 reti.set_facecolor(colors[i])
                 reti.set_edgecolor(colors[i])
                 reti.set_linewidth(0)
-                reti.xy[:, 1] *= Lnorm.to('erg / s').value
+                reti.xy[:, 1] *= Lnorm.to("erg / s").value
 
     def _generate_and_add_colormap(self):
         """generate the custom color map, linking colours with atomic
         numbers"""
 
-        values = [self.cmap(float(i) / float(self.zmax))
-                  for i in range(1, self.zmax+1)]
+        self.elements_in_kromer_plot = self.line_info
+
+        values = [
+            self.cmap(float(i) / float(self._nelements))
+            for i in range(self._nelements)
+        ]
 
         custcmap = matplotlib.colors.ListedColormap(values)
-        bounds = np.arange(self.zmax+1) + 0.5
-        norm = matplotlib.colors.Normalize(vmin=1, vmax=self.zmax+1)
+        bounds = np.arange(self._nelements) + 0.5
+        norm = matplotlib.colors.Normalize(vmin=0, vmax=self._nelements)
         mappable = cm.ScalarMappable(norm=norm, cmap=custcmap)
         mappable.set_array(np.linspace(1, self.zmax + 1, 256))
-        labels = [inv_elements[zi].capitalize()
-                  for zi in range(1, self.zmax+1)]
+        labels = [
+            inv_elements[zi].capitalize()
+            for zi in self.elements_in_kromer_plot[:, 0]
+        ]
 
         mainax = self.ax
         cbar = plt.colorbar(mappable, ax=mainax)
@@ -491,8 +570,9 @@ class tardis_kromer_plotter(object):
         bpatch = patches.Patch(color="black", label="photosphere")
         gpatch = patches.Patch(color="grey", label="e-scattering")
         bline = lines.Line2D([], [], color="blue", label="virtual spectrum")
-        phline = lines.Line2D([], [], color="red", ls="dashed",
-                              label="L at photosphere")
+        phline = lines.Line2D(
+            [], [], color="red", ls="dashed", label="L at photosphere"
+        )
 
         self.ax.legend(handles=[phline, bline, gpatch, bpatch])
 
