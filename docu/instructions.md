@@ -134,5 +134,43 @@ print 'Velocity of weak Si feature (f6) = ', D['velocity_f6'], '+-',\
       D['velocity_unc_f6']
 ```
 
+## tardis_line_id.py
+
+With ``tardis_line_id.py``, one can determine the transition(s) that are
+influencing the spectrum most, within a user-specified range.
+
+The following figure shows such an example bar chart for a Tardis calculation
+using the ``tardis_example`` setup:
+
+![image](images/line_ids_example.png)
+
+It has been produced with the following instructions:
+
+```
+import tardis
+import tardis_minimal_model as tmm
+import tardis_line_id as tlid
+
+config = tardis.yaml_load("model_late.yml")
+mdl = tardis.run_tardis(config)
+minmodel = tmm.minimal_model(mode="virtual")
+minmodel.from_interactive(mdl)
+
+# initialise the plotting tool
+plotter = tlid.line_identifier(minmodel)
+# generate plot
+plotter.plot_summary(lam_min=4000, lam_max=7000, nlines=20, output_filename='output_barchart_info.txt')
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
