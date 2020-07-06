@@ -28,7 +28,6 @@ inv_elements = pd.Series(
     elements["chem_symbol"], index=elements["atomic_no"]
 ).to_dict()
 
-
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.
     Kromer.
@@ -457,8 +456,8 @@ class tardis_kromer_plotter(object):
             colors.append(self.cmap(float(ii) / float(self._nelements)))
 
         Lnorm = 0
-        for w in weights:
-            Lnorm += np.sum(w)
+        for w, lam in zip(weights, lams):
+            Lnorm += np.sum(w[(lam >= self.bins[0]) * (lam <= self.bins[-1])])
 
         lams = [tmp_lam.value for tmp_lam in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
@@ -516,8 +515,8 @@ class tardis_kromer_plotter(object):
             colors.append(self.cmap(float(ii) / float(self._nelements)))
 
         Lnorm = 0
-        for w in weights:
-            Lnorm -= np.sum(w)
+        for w, lam in zip(weights, lams):
+            Lnorm -= np.sum(w[(lam >= self.bins[0]) * (lam <= self.bins[-1])])
 
         lams = [tmp_l.value for tmp_l in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
