@@ -385,8 +385,8 @@ class tardis_kromer_plotter(object):
 
         Returns
         -------
-        fig : matplotlib.figure
-            figure instance containing the plot
+        fig : matplotlib.axes
+            Axes object with the plot drawn onto it
         """
         self._ax = None
         self._pax = None
@@ -425,7 +425,7 @@ class tardis_kromer_plotter(object):
         self._generate_absorption_part()
         self._axis_handling_label_rescale()
 
-        return plt.gcf()
+        return plt.gca()
 
     def _axes_handling_preparation(self):
         """prepare the main axes; create a new axes if none exists"""
