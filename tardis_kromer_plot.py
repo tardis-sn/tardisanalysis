@@ -402,7 +402,6 @@ class tardis_kromer_plotter(object):
             self._elements_in_kromer_plot["atomic_no"],
             self._elements_in_kromer_plot["Total_no_of_interactions"],
         ]
-        print(self._elements_in_kromer_plot)
 
         if len(self._elements_in_kromer_plot) > self._nelements:
             self._elements_in_kromer_plot = self._elements_in_kromer_plot[
