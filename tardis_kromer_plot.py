@@ -304,16 +304,106 @@ class tardis_kromer_plotter(object):
     @property
     def line_info(self):
         """produces list of elements to be included in the kromer plot"""
-        line_out_infos_within_xlims = self.line_out_infos.loc[
-            (self.line_out_infos.wavelength >= self._xlim[0])
-            & (self.line_out_infos.wavelength <= self._xlim[1])
+
+        # gets list of elements and number of emitted packets
+        self.last_line_interaction_out_id = self.line_out_infos
+        self.last_line_interaction_out_angstrom = self.line_out_nu.to(
+            units.Angstrom, equivalencies=units.spectral()
+        )
+
+        self.lines = self.mdl.lines
+
+        packet_out_filter = (
+            self.last_line_interaction_out_angstrom
+            > self._xlim[0] * units.angstrom
+        ) & (
+            self.last_line_interaction_out_angstrom
+            < self._xlim[1] * units.angstrom
+        )
+
+        self.last_line_interaction_out_id[
+            "emitted_wavelength"
+        ] = self.last_line_interaction_out_angstrom
+
+        line_out_infos_within_xlims = self.last_line_interaction_out_id.loc[
+            (
+                self.last_line_interaction_out_id.emitted_wavelength
+                >= self._xlim[0]
+            )
+            & (
+                self.last_line_interaction_out_id.emitted_wavelength
+                <= self._xlim[1]
+            )
         ]
-        self._elements_in_kromer_plot = np.c_[
+        self._elements_in_kromer_plot_out = np.c_[
             np.unique(
                 line_out_infos_within_xlims.atomic_number.values,
                 return_counts=True,
             )
         ]
+
+        # gets list of elements and number of absorbed packets
+        self.last_line_interaction_in_id = self.line_in_infos
+        self.last_line_interaction_in_angstrom = self.line_in_nu.to(
+            units.Angstrom, equivalencies=units.spectral()
+        )
+
+        self.lines = self.mdl.lines
+
+        packet_in_filter = (
+            self.last_line_interaction_in_angstrom
+            > self._xlim[0] * units.angstrom
+        ) & (
+            self.last_line_interaction_in_angstrom
+            < self._xlim[1] * units.angstrom
+        )
+
+        self.last_line_interaction_in_id[
+            "emitted_wavelength"
+        ] = self.last_line_interaction_in_angstrom
+
+        line_in_infos_within_xlims = self.last_line_interaction_in_id.loc[
+            (
+                self.last_line_interaction_in_id.emitted_wavelength
+                >= self._xlim[0]
+            )
+            & (
+                self.last_line_interaction_in_id.emitted_wavelength
+                <= self._xlim[1]
+            )
+        ]
+        self._elements_in_kromer_plot_in = np.c_[
+            np.unique(
+                line_in_infos_within_xlims.atomic_number.values,
+                return_counts=True,
+            )
+        ]
+
+        self._elements_in_kromer_plot = pd.DataFrame(
+            data=np.concatenate(
+                [
+                    self._elements_in_kromer_plot_out,
+                    self._elements_in_kromer_plot_in,
+                ]
+            ),
+            columns=["atomic_no", "no_of_interactions"],
+        )
+        self._elements_in_kromer_plot[
+            "Total_no_of_interactions"
+        ] = self._elements_in_kromer_plot.groupby(["atomic_no"])[
+            "no_of_interactions"
+        ].transform(
+            "sum"
+        )
+        self._elements_in_kromer_plot = self._elements_in_kromer_plot.drop_duplicates(
+            subset=["atomic_no"]
+        )
+        self._elements_in_kromer_plot = np.c_[
+            self._elements_in_kromer_plot["atomic_no"],
+            self._elements_in_kromer_plot["Total_no_of_interactions"],
+        ]
+        print(self._elements_in_kromer_plot)
+
         if len(self._elements_in_kromer_plot) > self._nelements:
             self._elements_in_kromer_plot = self._elements_in_kromer_plot[
                 np.argsort(self._elements_in_kromer_plot[:, 1])[::-1]
