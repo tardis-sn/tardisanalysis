@@ -85,7 +85,7 @@ class KromerPlotLib:
 
 
 
-    def __init__(self, sim):
+    def __init__(self, sim, distance=None):
 
         # Save sim
         self.sim = sim
@@ -121,6 +121,16 @@ class KromerPlotLib:
         self.kromer_packet_df_line_interaction['last_line_interaction_in_atom'] = \
         self.lines_df.iloc[self.kromer_packet_df_line_interaction['last_line_interaction_in_id']][
             'atomic_number'].values
+
+        if distance is None:
+            self.isflux = False
+            self.distance = None
+        else:
+            lum_to_flux = 4.0 * np.pi * (distance.to('cm'))**2
+            self.kromer_packet_df['energies'] = self.kromer_packet_df['energies'] / lum_to_flux
+            self.kromer_packet_df_line_interaction['energies'] = self.kromer_packet_df_line_interaction['energies'] / lum_to_flux
+            self.isflux = True
+            self.lum_to_flux = lum_to_flux
 
         return
 
@@ -178,6 +188,12 @@ class KromerPlotLib:
                              packet_wvl_range=packet_wvl_range)
         self._plotPhotosphere()
         self.ax.legend(fontsize=20)
+        if self.isflux:
+            self.ax.set_xlabel('Wavelength $(\AA)$', fontsize=20)
+            self.ax.set_ylabel('$F_{\lambda}$ (erg/s/$cm^{2}/\AA$)', fontsize=20)
+        else:
+            self.ax.set_xlabel('Wavelength $(\AA)$', fontsize=20)
+            self.ax.set_ylabel('$L$ (erg/s/$\AA$)', fontsize=20)
 
         return plt.gcf(), self.ax
 
@@ -217,7 +233,12 @@ class KromerPlotLib:
 
         # Plot virtual spectrum
         if show_virtspec:
-            self.ax.plot(self.sim.runner.spectrum_virtual.wavelength,
+            if self.isflux:
+                self.ax.plot(self.sim.runner.spectrum_virtual.wavelength,
+                             self.sim.runner.spectrum_virtual.luminosity_density_lambda / self.lum_to_flux,
+                             '--b', label='Virtual Spectrum', ds='steps-pre', linewidth=1)
+            else:
+                self.ax.plot(self.sim.runner.spectrum_virtual.wavelength,
                          self.sim.runner.spectrum_virtual.luminosity_density_lambda,
                          '--b', label='Virtual Spectrum', ds='steps-pre', linewidth=1)
 
@@ -278,8 +299,8 @@ class KromerPlotLib:
 
         # Colorbar and Legend
         # self.ax.legend(fontsize=20)
-        self.ax.set_xlabel('Wavelength $(\AA)$', fontsize=20)
-        self.ax.set_ylabel('$L$ (erg/s/$\AA$)', fontsize=20)
+        #self.ax.set_xlabel('Wavelength $(\AA)$', fontsize=20)
+        #self.ax.set_ylabel('$L$ (erg/s/$\AA$)', fontsize=20)
 
         cbar = plt.colorbar(mappable, ax=self.ax)
         cbar.set_ticks(bounds)
@@ -332,7 +353,10 @@ class KromerPlotLib:
                * self.sim.model.r_inner[0] ** 2
                * u.sr
                ).to("erg / (AA s)")
-        self.ax.plot(self.sim.runner.spectrum_virtual.wavelength, Lph, '--r', label="Blackbody Photosphere")
+        if self.isflux:
+            self.ax.plot(self.sim.runner.spectrum_virtual.wavelength, Lph / self.lum_to_flux, '--r', label="Blackbody Photosphere")
+        else:
+            self.ax.plot(self.sim.runner.spectrum_virtual.wavelength, Lph, '--r', label="Blackbody Photosphere")
         return
 
 
