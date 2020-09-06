@@ -304,26 +304,39 @@ class tardis_kromer_plotter(object):
     @property
     def line_info(self):
         """produces list of elements to be included in the kromer plot"""
-        line_out_infos_within_xlims = self.line_out_infos.loc[
+        self.line_out_infos_within_xlims = self.line_out_infos.loc[
             (self.line_out_infos.wavelength >= self._xlim[0])
             & (self.line_out_infos.wavelength <= self._xlim[1])
         ]
+        
+        self.line_out_infos_within_xlims['ion_id'] = self.line_out_infos_within_xlims['atomic_number'] * 1000 + self.line_out_infos_within_xlims['ion_number']
+                
+        if self._species_list != None:
+            ids = [species_string_to_tuple(species)[0] * 1000 + species_string_to_tuple(species)[1] for species in self._species_list]
+
+        
         self._elements_in_kromer_plot = np.c_[
             np.unique(
-                line_out_infos_within_xlims.atomic_number.values,
+                line_out_infos_within_xlims.ion_id.values,
                 return_counts=True,
             )
         ]
+        
         if len(self._elements_in_kromer_plot) > self._nelements:
-            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
-                np.argsort(self._elements_in_kromer_plot[:, 1])[::-1]
-            ]
-            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
-                : self._nelements
-            ]
-            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
-                np.argsort(self._elements_in_kromer_plot[:, 0])
-            ]
+            if self._species_list == None:
+                self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                    np.argsort(self._elements_in_kromer_plot[:, 1])[::-1]
+                ]
+                self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                    : self._nelements
+                ]
+                self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                    np.argsort(self._elements_in_kromer_plot[:, 0])
+                ]
+            else:
+                ids = [species_string_to_tuple(species)[0] * 1000 + species_string_to_tuple(species)[1] for species in self._species_list]
+                mask = np.in1d(self._elements_in_kromer_plot[:, 0], ids)
+                self._elements_in_kromer_plot = self._elements_in_kromer_plot[mask]
         else:
             self._nelements = len(self._elements_in_kromer_plot)
         return self._elements_in_kromer_plot
@@ -356,6 +369,7 @@ class tardis_kromer_plotter(object):
         ylim=None,
         nelements=None,
         twinx=False,
+        species_list=None,
     ):
         """Generate the actual "Kromer" plot
 
@@ -382,6 +396,9 @@ class tardis_kromer_plotter(object):
             if True, the absorption part is attached at the top of the main
             axes box, otherwise it is placed below the emission part (default
             False)
+        species_list: list of strings or None
+            list of strings containing the names of species that should be included in the Kromer plots,
+            e.g. ['Si II', 'Ca II']
 
         Returns
         -------
@@ -396,12 +413,16 @@ class tardis_kromer_plotter(object):
         self._ylim = ylim
         self._twinx = twinx
 
-        if nelements == None:
+        if nelements == None and species_list == None:
             self._nelements = len(
                 np.unique(self.line_out_infos.atomic_number.values)
             )
+        elif nelements == None and species_list != None:
+            self._nelements = len(species_list)
         else:
             self._nelements = nelements
+        
+        self._species_list = species_list
 
         if xlim == None:
             self._xlim = [
@@ -451,12 +472,30 @@ class tardis_kromer_plotter(object):
 
         self.elements_in_kromer_plot = self.line_info
 
-        for zi in self.elements_in_kromer_plot[:, 0]:
-            mask = self.line_out_infos.atomic_number.values == zi
-            lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
-            weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
-        for ii in range(self._nelements):
-            colors.append(self.cmap(float(ii) / float(self._nelements)))
+        for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+            
+            ion_number = zi % 1000
+            atomic_number = (zi - ion_number) / 1000
+            
+            if zi not in self.elements_in_kromer_plot[:, 0]:
+                
+                mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
+                weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
+                colors.append("silver")
+        ii = 0
+        for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+            
+            ion_number = zi % 1000
+            atomic_number = (zi - ion_number) / 1000
+            
+            if zi in self.elements_in_kromer_plot[:, 0]:
+                
+                mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
+                weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
+                colors.append(self.cmap(float(ii) / float(self._nelements)))
+                ii = ii + 1
 
         Lnorm = 0
         for w, lam in zip(weights, lams):
@@ -510,12 +549,31 @@ class tardis_kromer_plotter(object):
 
         self.elements_in_kromer_plot = self.line_info
 
-        for zi in self.elements_in_kromer_plot[:, 0]:
-            mask = self.line_in_infos.atomic_number.values == zi
-            lams.append((csts.c.cgs / self.line_in_nu[mask]).to(units.AA))
-            weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
-        for ii in range(self._nelements):
-            colors.append(self.cmap(float(ii) / float(self._nelements)))
+        for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+            
+            ion_number = zi % 1000
+            atomic_number = (zi - ion_number) / 1000
+            
+            if zi not in self.elements_in_kromer_plot[:, 0]:
+                
+                mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
+                weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
+                colors.append("silver")
+        ii = 0
+        for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+            
+            ion_number = zi % 1000
+            atomic_number = (zi - ion_number) / 1000
+            
+            if zi in self.elements_in_kromer_plot[:, 0]:
+                
+                mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
+                weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
+                colors.append(self.cmap(float(ii) / float(self._nelements)))
+                ii = ii + 1
+
 
         Lnorm = 0
         for w, lam in zip(weights, lams):
@@ -555,10 +613,16 @@ class tardis_kromer_plotter(object):
         norm = matplotlib.colors.Normalize(vmin=0, vmax=self._nelements)
         mappable = cm.ScalarMappable(norm=norm, cmap=custcmap)
         mappable.set_array(np.linspace(1, self.zmax + 1, 256))
-        labels = [
-            inv_elements[zi].capitalize()
-            for zi in self.elements_in_kromer_plot[:, 0]
-        ]
+        if self._species_list != None:
+            labels = [
+                      species_tuple_to_string(species_string_to_tuple(zi))
+                      for zi in self._species_list
+                      ]
+        else:
+            labels = [
+                      inv_elements[zi].capitalize()
+                      for zi in self.elements_in_kromer_plot[:, 0]
+                      ]
 
         mainax = self.ax
         cbar = plt.colorbar(mappable, ax=mainax)
@@ -570,12 +634,14 @@ class tardis_kromer_plotter(object):
 
         bpatch = patches.Patch(color="black", label="photosphere")
         gpatch = patches.Patch(color="grey", label="e-scattering")
+        spatch = patches.Patch(color="silver", label="Other species")
+
         bline = lines.Line2D([], [], color="blue", label="virtual spectrum")
         phline = lines.Line2D(
             [], [], color="red", ls="dashed", label="L at photosphere"
         )
 
-        self.ax.legend(handles=[phline, bline, gpatch, bpatch])
+        self.ax.legend(handles=[phline, bline, gpatch, bpatch, spatch])
 
     def _axis_handling_label_rescale(self):
         """add axis labels and perform axis scaling"""
