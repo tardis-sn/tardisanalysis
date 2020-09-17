@@ -6,13 +6,12 @@ import astropy.units as units
 import matplotlib.pyplot as plt
 from tardis_minimal_model import minimal_model
 import pandas as pd
-import csv
 
-with open('elements.csv') as f:
-    reader = csv.reader(f, skipinitialspace=True)
-    elements = dict(reader)
+elements = pd.read_csv("elements.csv", names=["chem_symbol", "atomic_no"])
+inv_elements = pd.Series(
+    elements["chem_symbol"], index=elements["atomic_no"]
+).to_dict()
 
-inv_elements = dict([(int(v), k) for k, v in elements.items()])
 
 class line_identifier(object):
     def __init__(self, mdl):
