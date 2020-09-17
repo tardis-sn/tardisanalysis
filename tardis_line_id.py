@@ -142,26 +142,32 @@ class line_identifier(object):
             tardis.__path__[0], "data", "atomic_symbols.dat"
         )
 
-        if lam_min == None:
+        if lam_min is None:
             self.lam_min = np.min(self.mdl.spectrum_wave).value
         else:
             self.lam_min = lam_min
 
-        if lam_max == None:
+        if lam_max is None:
             self.lam_max = np.max(self.mdl.spectrum_wave).value
         else:
             self.lam_max = lam_max
-
-        if nlines == None:
-            self.nlines = 20
-        else:
-            self.nlines = nlines
 
         _lines_count = self.lines_count[np.argsort(self.lines_count)][::-1]
         _lines_fraction = self.lines_count[np.argsort(self.lines_count)][
             ::-1
         ] / float(self.lines_count.sum())
         _lines_ids = self.lines_ids_unique[np.argsort(self.lines_count)][::-1]
+
+        if nlines is None:
+            if len(_lines_count) > 20:
+                self.nlines = 20
+            else:
+                self.nlines = len(_lines_count)
+        else:
+            if len(_lines_count) > nlines:
+                self.nlines = nlines
+            else:
+                self.nlines = len(_lines_count)
 
         def ion2roman(ion_value):
             """function to convert ionisation level into roman numeral
