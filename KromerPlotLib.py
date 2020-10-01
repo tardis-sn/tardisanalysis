@@ -154,7 +154,7 @@ class KromerPlotLib:
         self,
         packet_wvl_range=None,
         ax=None,
-        figsize=(10, 10),
+        figsize=(10, 7),
         cmapname="jet",
         show_virtspec=True,
     ):
@@ -214,16 +214,16 @@ class KromerPlotLib:
         )
         self._plotPhotosphere()
 
-        self.ax.legend(fontsize=20)
-        self.ax.set_xlabel("Wavelength $(\AA)$", fontsize=20)
+        self.ax.legend(fontsize=15)
+        self.ax.set_xlabel("Wavelength $(\AA)$", fontsize=15)
         if self.is_flux:
             self.ax.set_ylabel(
-                "$F_{\lambda}$ (erg/s/$cm^{2}/\AA$)", fontsize=20
+                "$F_{\lambda}$ (erg/s/$cm^{2}/\AA$)", fontsize=15
             )
         else:
-            self.ax.set_ylabel("$L$ (erg/s/$\AA$)", fontsize=20)
+            self.ax.set_ylabel("$L$ (erg/s/$\AA$)", fontsize=15)
 
-        return plt.gcf(), self.ax
+        return plt.gca()
 
     def _plotEmission(
         self, bins, wvl, packet_wvl_range, cmapname, show_virtspec
