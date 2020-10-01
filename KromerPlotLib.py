@@ -135,8 +135,8 @@ class KromerPlotLib:
         )
 
         if distance is None:
-            self.isflux = False
-            self.distance = None
+            self.is_flux = False
+            self.lum_to_flux = 1  # so that this factor will have no effect
         else:
             lum_to_flux = 4.0 * np.pi * (distance.to("cm")) ** 2
             self.kromer_packet_df["energies"] = (
@@ -145,9 +145,8 @@ class KromerPlotLib:
             self.kromer_packet_df_line_interaction["energies"] = (
                 self.kromer_packet_df_line_interaction["energies"] / lum_to_flux
             )
-            self.isflux = True
+            self.is_flux = True
             self.lum_to_flux = lum_to_flux
-            # TODO: can keep lum_to_flux = 1 for isflux = False (will save redundant statements in if-else clause further)
 
         return
 
@@ -216,13 +215,12 @@ class KromerPlotLib:
         self._plotPhotosphere()
 
         self.ax.legend(fontsize=20)
-        if self.isflux:
-            self.ax.set_xlabel("Wavelength $(\AA)$", fontsize=20)
+        self.ax.set_xlabel("Wavelength $(\AA)$", fontsize=20)
+        if self.is_flux:
             self.ax.set_ylabel(
                 "$F_{\lambda}$ (erg/s/$cm^{2}/\AA$)", fontsize=20
             )
         else:
-            self.ax.set_xlabel("Wavelength $(\AA)$", fontsize=20)
             self.ax.set_ylabel("$L$ (erg/s/$\AA$)", fontsize=20)
 
         return plt.gcf(), self.ax
@@ -297,25 +295,15 @@ class KromerPlotLib:
 
         # Plot virtual spectrum
         if show_virtspec:
-            if self.isflux:
-                self.ax.plot(
-                    self.sim.runner.spectrum_virtual.wavelength,
-                    self.sim.runner.spectrum_virtual.luminosity_density_lambda
-                    / self.lum_to_flux,
-                    "--b",
-                    label="Virtual Spectrum",
-                    # ds="steps-pre", # no need to make it look histogram
-                    linewidth=1,
-                )
-            else:
-                self.ax.plot(
-                    self.sim.runner.spectrum_virtual.wavelength,
-                    self.sim.runner.spectrum_virtual.luminosity_density_lambda,
-                    "--b",
-                    label="Virtual Spectrum",
-                    # ds="steps-pre",
-                    linewidth=1,
-                )
+            self.ax.plot(
+                self.sim.runner.spectrum_virtual.wavelength,
+                self.sim.runner.spectrum_virtual.luminosity_density_lambda
+                / self.lum_to_flux,
+                "--b",
+                label="Virtual Spectrum",
+                # ds="steps-pre", # no need to make it look histogram
+                linewidth=1,
+            )
 
         # No Scattering Contribution
         # We convert histogram values to luminosity density lambda.
@@ -509,18 +497,10 @@ class KromerPlotLib:
             * self.sim.model.r_inner[0] ** 2
             * u.sr
         ).to("erg / (AA s)")
-        if self.isflux:
-            self.ax.plot(
-                self.sim.runner.spectrum_virtual.wavelength,
-                Lph / self.lum_to_flux,
-                "--r",
-                label="Blackbody Photosphere",
-            )
-        else:
-            self.ax.plot(
-                self.sim.runner.spectrum_virtual.wavelength,
-                Lph,
-                "--r",
-                label="Blackbody Photosphere",
-            )
+        self.ax.plot(
+            self.sim.runner.spectrum_virtual.wavelength,
+            Lph / self.lum_to_flux,
+            "--r",
+            label="Blackbody Photosphere",
+        )
         return
