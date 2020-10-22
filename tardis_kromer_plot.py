@@ -311,16 +311,6 @@ class tardis_kromer_plotter(object):
             units.Angstrom, equivalencies=units.spectral()
         )
 
-        self.lines = self.mdl.lines
-
-        packet_out_filter = (
-            self.last_line_interaction_out_angstrom
-            > self._xlim[0] * units.angstrom
-        ) & (
-            self.last_line_interaction_out_angstrom
-            < self._xlim[1] * units.angstrom
-        )
-
         self.last_line_interaction_out_id[
             "emitted_wavelength"
         ] = self.last_line_interaction_out_angstrom
@@ -346,16 +336,6 @@ class tardis_kromer_plotter(object):
         self.last_line_interaction_in_id = self.line_in_infos
         self.last_line_interaction_in_angstrom = self.line_in_nu.to(
             units.Angstrom, equivalencies=units.spectral()
-        )
-
-        self.lines = self.mdl.lines
-
-        packet_in_filter = (
-            self.last_line_interaction_in_angstrom
-            > self._xlim[0] * units.angstrom
-        ) & (
-            self.last_line_interaction_in_angstrom
-            < self._xlim[1] * units.angstrom
         )
 
         self.last_line_interaction_in_id[
