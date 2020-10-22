@@ -338,6 +338,8 @@ class tardis_kromer_plotter(object):
             units.Angstrom, equivalencies=units.spectral()
         )
 
+        print("test")
+
         self.last_line_interaction_in_id[
             "emitted_wavelength"
         ] = self.last_line_interaction_in_angstrom
