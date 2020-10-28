@@ -313,9 +313,9 @@ class tardis_kromer_plotter(object):
         """this generates the 4-digit ID for all transitions in the model (e.g. Fe III line --> 2602)"""
         self.line_out_infos_within_xlims['ion_id'] = self.line_out_infos_within_xlims['atomic_number'] * 100 + self.line_out_infos_within_xlims['ion_number']
 
+        self.keep_colour = []
         """ this reads in the species specified by user and generates the 4-digit ID keys for them """
         if self._species_list != None:
-            self.keep_colour = []
             requested_species_ids = []
             """ check if there are any digits in the species list. If there are then exit
             Species_list should only contain species in the Roman numeral format, e.g. Si II"""
@@ -461,7 +461,9 @@ class tardis_kromer_plotter(object):
                         full_species_list.append(element + " " + int_to_roman(i))
                 else:
                     full_species_list.append(species)
-        self._species_list = full_species_list
+            self._species_list = full_species_list
+        else:
+            self._species_list = None
 
 
 
@@ -494,6 +496,7 @@ class tardis_kromer_plotter(object):
 
 
         self._elements_in_kromer_plot = self.line_info
+
         if self._species_list != None:
             labels = []
             for species in self._species_list:
@@ -507,6 +510,7 @@ class tardis_kromer_plotter(object):
                 else:
                     labels.append(species)
             self._nelements = len(labels)
+
 
 
         self._axes_handling_preparation()
@@ -543,34 +547,52 @@ class tardis_kromer_plotter(object):
         colors = ["black", "grey"]
 
 
-        for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+        if self._species_list != None:
+            values_to_compare = np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,)
+        else:
+            values_to_compare = np.unique(self.line_out_infos_within_xlims.atomic_number.values, return_counts=False,)
+
+        for zi in values_to_compare:
 
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
-            ion_number = zi % 100
-            atomic_number = (zi - ion_number) / 100
+            if self._species_list != None:
+                ion_number = zi % 100
+                atomic_number = (zi - ion_number) / 100
+            else:
+                atomic_number = zi
 
             """ if the ion is not included in our list for the colourbar, then its contribution
             is added here to the miscellaneous grey shaded region of the plot"""
             if zi not in self._elements_in_kromer_plot[:, 0]:
 
-                mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                if self._species_list != None:
+                    mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                else:
+                    mask = (self.line_out_infos.atomic_number.values == atomic_number)
+
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
                 weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
                 colors.append("silver")
 
         ii = 0
         previous_atomic_number = 0
-        for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+        for zi in values_to_compare:
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
-            ion_number = zi % 100
-            atomic_number = (zi - ion_number) / 100
+            if self._species_list != None:
+                ion_number = zi % 100
+                atomic_number = (zi - ion_number) / 100
+            else:
+                atomic_number = zi
 
             """if the ion is included in our list for the colourbar, then its
             contribution is added here as a unique colour to the plot"""
             if zi in self._elements_in_kromer_plot[:, 0]:
-                mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                if self._species_list != None:
+                    mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                else:
+                    mask = (self.line_out_infos.atomic_number.values == atomic_number)
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
                 weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
                 colors.append(self.cmap(float(ii) / float(self._nelements)))
@@ -630,34 +652,53 @@ class tardis_kromer_plotter(object):
         weights = []
         colors = []
 
+        if self._species_list != None:
+            values_to_compare = np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,)
+        else:
+            values_to_compare = np.unique(self.line_out_infos_within_xlims.atomic_number.values, return_counts=False,)
 
-        for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+
+        for zi in values_to_compare:
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
-            ion_number = zi % 100
-            atomic_number = (zi - ion_number) / 100
+            if self._species_list != None:
+                ion_number = zi % 100
+                atomic_number = (zi - ion_number) / 100
+            else:
+                atomic_number = zi
 
             """if the ion is not included in our list for the colourbar, then its contribution
             is added here to the miscellaneous grey shaded region of the plot"""
             if zi not in self._elements_in_kromer_plot[:, 0]:
 
-                mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                if self._species_list != None:
+                    mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                else:
+                    mask = (self.line_out_infos.atomic_number.values == atomic_number)
+
                 lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
                 weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
                 colors.append("silver")
         ii = 0
         previous_atomic_number = 0
-        for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+        for zi in values_to_compare:
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
-            ion_number = zi % 100
-            atomic_number = (zi - ion_number) / 100
+            if self._species_list != None:
+                ion_number = zi % 100
+                atomic_number = (zi - ion_number) / 100
+            else:
+                atomic_number = zi
 
             """if the ion is included in our list for the colourbar, then its
             contribution is added here as a unique colour to the plot"""
             if zi in self._elements_in_kromer_plot[:, 0]:
 
-                mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                if self._species_list != None:
+                    mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
+                else:
+                    mask = (self.line_out_infos.atomic_number.values == atomic_number)
+
                 lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
                 weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
                 colors.append(self.cmap(float(ii) / float(self._nelements)))
@@ -698,8 +739,6 @@ class tardis_kromer_plotter(object):
             self.cmap(float(i) / float(self._nelements))
             for i in range(self._nelements)
         ]
-
-
 
         custcmap = matplotlib.colors.ListedColormap(values)
         bounds = np.arange(self._nelements) + 0.5
