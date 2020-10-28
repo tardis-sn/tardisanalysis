@@ -315,7 +315,12 @@ class tardis_kromer_plotter(object):
 
         """ this reads in the species specified by user and generates the 4-digit ID keys for them """
         if self._species_list != None:
-            ids = [species_string_to_tuple(species)[0] * 100 + species_string_to_tuple(species)[1] for species in self._species_list]
+            """ check if there are any digits in the species list. If there are then exit
+            Species_list should only contain species in the Roman numeral format, e.g. Si II"""
+            if any(char.isdigit() for char in ' '.join(self._species_list)) == True:
+                raise ValueError("All species must be in Roman numeral form, e.g. Si II")
+            else:
+                self.requested_species_ids = [species_string_to_tuple(species)[0] * 100 + species_string_to_tuple(species)[1] for species in self._species_list]
 
 
         """ now we are getting the list of unique values for 'ion_id' """
@@ -342,7 +347,7 @@ class tardis_kromer_plotter(object):
                 ]
             else:
                 """ if we have specified a species list... """
-                mask = np.in1d(self._elements_in_kromer_plot[:, 0], ids)
+                mask = np.in1d(self._elements_in_kromer_plot[:, 0], self.requested_species_ids)
                 self._elements_in_kromer_plot = self._elements_in_kromer_plot[mask]
         else:
             """ if the length of self._elements_in_kromer_plot is less than the requested number of elements in the model,
@@ -490,7 +495,7 @@ class tardis_kromer_plotter(object):
             determining the atomic and ion numbers for all ions in our model"""
             ion_number = zi % 100
             atomic_number = (zi - ion_number) / 100
-            
+
             """ if the ion is not included in our list for the colourbar, then its contribution
             is added here to the miscellaneous grey shaded region of the plot"""
             if zi not in self.elements_in_kromer_plot[:, 0]:
