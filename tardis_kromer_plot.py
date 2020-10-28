@@ -19,6 +19,7 @@ import matplotlib.patches as patches
 import matplotlib.lines as lines
 import matplotlib.cm as cm
 from tardis_minimal_model import minimal_model
+from tardis.util.base import species_string_to_tuple, species_tuple_to_string
 
 plt.rcdefaults()
 
@@ -308,20 +309,20 @@ class tardis_kromer_plotter(object):
             (self.line_out_infos.wavelength >= self._xlim[0])
             & (self.line_out_infos.wavelength <= self._xlim[1])
         ]
-        
+
         self.line_out_infos_within_xlims['ion_id'] = self.line_out_infos_within_xlims['atomic_number'] * 1000 + self.line_out_infos_within_xlims['ion_number']
-                
+
         if self._species_list != None:
             ids = [species_string_to_tuple(species)[0] * 1000 + species_string_to_tuple(species)[1] for species in self._species_list]
 
-        
+
         self._elements_in_kromer_plot = np.c_[
             np.unique(
                 line_out_infos_within_xlims.ion_id.values,
                 return_counts=True,
             )
         ]
-        
+
         if len(self._elements_in_kromer_plot) > self._nelements:
             if self._species_list == None:
                 self._elements_in_kromer_plot = self._elements_in_kromer_plot[
@@ -421,7 +422,7 @@ class tardis_kromer_plotter(object):
             self._nelements = len(species_list)
         else:
             self._nelements = nelements
-        
+
         self._species_list = species_list
 
         if xlim == None:
@@ -473,24 +474,24 @@ class tardis_kromer_plotter(object):
         self.elements_in_kromer_plot = self.line_info
 
         for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
-            
+
             ion_number = zi % 1000
             atomic_number = (zi - ion_number) / 1000
-            
+
             if zi not in self.elements_in_kromer_plot[:, 0]:
-                
+
                 mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
                 weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
                 colors.append("silver")
         ii = 0
         for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
-            
+
             ion_number = zi % 1000
             atomic_number = (zi - ion_number) / 1000
-            
+
             if zi in self.elements_in_kromer_plot[:, 0]:
-                
+
                 mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
                 weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
@@ -550,24 +551,24 @@ class tardis_kromer_plotter(object):
         self.elements_in_kromer_plot = self.line_info
 
         for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
-            
+
             ion_number = zi % 1000
             atomic_number = (zi - ion_number) / 1000
-            
+
             if zi not in self.elements_in_kromer_plot[:, 0]:
-                
+
                 mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
                 weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
                 colors.append("silver")
         ii = 0
         for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
-            
+
             ion_number = zi % 1000
             atomic_number = (zi - ion_number) / 1000
-            
+
             if zi in self.elements_in_kromer_plot[:, 0]:
-                
+
                 mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
                 weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
