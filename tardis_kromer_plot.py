@@ -315,12 +315,22 @@ class tardis_kromer_plotter(object):
 
         """ this reads in the species specified by user and generates the 4-digit ID keys for them """
         if self._species_list != None:
+            requested_species_ids = []
             """ check if there are any digits in the species list. If there are then exit
             Species_list should only contain species in the Roman numeral format, e.g. Si II"""
             if any(char.isdigit() for char in ' '.join(self._species_list)) == True:
                 raise ValueError("All species must be in Roman numeral form, e.g. Si II")
             else:
-                self.requested_species_ids = [species_string_to_tuple(species)[0] * 100 + species_string_to_tuple(species)[1] for species in self._species_list]
+                for species in self._species_list:
+                    if " " in species:
+                        print(species)
+                        requested_species_ids.append(species_string_to_tuple(species)[0] * 100 + species_string_to_tuple(species)[1])
+                    else:
+                        print(species)
+                        atomic_number = int(elements[species.lower()])
+                        requested_species_ids.append([atomic_number * 100 + i for i in np.arange(atomic_number)])
+                self.requested_species_ids = requested_species_ids
+        print(self.requested_species_ids)
 
 
         """ now we are getting the list of unique values for 'ion_id' """
@@ -647,10 +657,7 @@ class tardis_kromer_plotter(object):
 
         """if a species_list has been specified..."""
         if self._species_list != None:
-            labels = [
-                      species_tuple_to_string(species_string_to_tuple(zi))
-                      for zi in self._species_list
-                      ]
+            labels = self._species_list
         else:
             """ if no species_list specified, generate the labels this way"""
             labels = [
