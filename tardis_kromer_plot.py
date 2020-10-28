@@ -497,6 +497,7 @@ class tardis_kromer_plotter(object):
 
         self._elements_in_kromer_plot = self.line_info
 
+
         if self._species_list != None:
             labels = []
             for species in self._species_list:
@@ -510,6 +511,7 @@ class tardis_kromer_plotter(object):
                 else:
                     labels.append(species)
             self._nelements = len(labels)
+
 
 
 
@@ -589,6 +591,7 @@ class tardis_kromer_plotter(object):
             """if the ion is included in our list for the colourbar, then its
             contribution is added here as a unique colour to the plot"""
             if zi in self._elements_in_kromer_plot[:, 0]:
+
                 if self._species_list != None:
                     mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 else:
@@ -600,6 +603,7 @@ class tardis_kromer_plotter(object):
                     ii = ii
                 else:
                     ii = ii + 1
+
                 previous_atomic_number = atomic_number
 
         Lnorm = 0
@@ -749,16 +753,22 @@ class tardis_kromer_plotter(object):
         """if a species_list has been specified..."""
         if self._species_list != None:
             labels = []
-            for species in self._species_list:
-                if " " in species:
-                    atomic_number = species_string_to_tuple(species)[0]
-                    ion_number = species_string_to_tuple(species)[1]
+            for zi in self._elements_in_kromer_plot:
 
-                    species_id = atomic_number * 100 + ion_number
-                    if species_id in self._elements_in_kromer_plot:
-                        labels.append(species)
-                else:
-                    labels.append(species)
+                ion_number = zi[0] % 100
+                atomic_number = (zi[0] - ion_number) / 100
+
+                ion_numeral = int_to_roman(ion_number + 1)
+                # using elements dictionary to get atomic symbol for the species
+                atomic_symbol = inv_elements[atomic_number].capitalize()
+                if (atomic_number in self.keep_colour) & (atomic_symbol not in labels):
+                    # compiling the label, and adding it to the list
+                    label = f"{atomic_symbol}"
+                    labels.append(label)
+                elif (atomic_number not in self.keep_colour):
+                     label = f"{atomic_symbol}$\,${ion_numeral}"
+                     labels.append(label)
+
         else:
             """ if no species_list specified, generate the labels this way"""
             labels = [
