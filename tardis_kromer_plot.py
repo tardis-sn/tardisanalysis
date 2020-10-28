@@ -19,7 +19,7 @@ import matplotlib.patches as patches
 import matplotlib.lines as lines
 import matplotlib.cm as cm
 from tardis_minimal_model import minimal_model
-from tardis.util.base import species_string_to_tuple, species_tuple_to_string
+from tardis.util.base import species_string_to_tuple, species_tuple_to_string, roman_to_int, int_to_roman
 
 plt.rcdefaults()
 
@@ -321,25 +321,33 @@ class tardis_kromer_plotter(object):
             if any(char.isdigit() for char in ' '.join(self._species_list)) == True:
                 raise ValueError("All species must be in Roman numeral form, e.g. Si II")
             else:
+                """ go through each of the request species. Check whether it is an element or ion (ions have spaces).
+                If it is an element, add all possible ions to the ions list. Otherwise just add the requested ion"""
                 for species in self._species_list:
                     if " " in species:
-                        print(species)
-                        requested_species_ids.append(species_string_to_tuple(species)[0] * 100 + species_string_to_tuple(species)[1])
+                        requested_species_ids.append([species_string_to_tuple(species)[0] * 100 + species_string_to_tuple(species)[1]])
                     else:
-                        print(species)
                         atomic_number = int(elements[species.lower()])
                         requested_species_ids.append([atomic_number * 100 + i for i in np.arange(atomic_number)])
-                self.requested_species_ids = requested_species_ids
+                self.requested_species_ids = [species_id for list in requested_species_ids for species_id in list]
         print(self.requested_species_ids)
 
 
-        """ now we are getting the list of unique values for 'ion_id' """
-        self._elements_in_kromer_plot = np.c_[
-            np.unique(
-                self.line_out_infos_within_xlims.ion_id.values,
-                return_counts=True,
-            )
-        ]
+        """ now we are getting the list of unique values for 'ion_id' if we would like to use species. Otherwise we get unique atomic numbers"""
+        if self._species_list != None:
+            self._elements_in_kromer_plot = np.c_[
+                np.unique(
+                    self.line_out_infos_within_xlims.ion_id.values,
+                    return_counts=True,
+                )
+            ]
+        else:
+            self._elements_in_kromer_plot = np.c_[
+                np.unique(
+                    self.line_out_infos_within_xlims.atomic_number.values,
+                        return_counts=True,
+                    )
+                ]
 
         """ if the length of self._elements_in_kromer_plot exceeds the requested number
         of elements to be included in the colourbar, then this if statement applies """
@@ -357,12 +365,18 @@ class tardis_kromer_plotter(object):
                 ]
             else:
                 """ if we have specified a species list... """
+                print("1")
+                print(self._elements_in_kromer_plot)
                 mask = np.in1d(self._elements_in_kromer_plot[:, 0], self.requested_species_ids)
                 self._elements_in_kromer_plot = self._elements_in_kromer_plot[mask]
+                print(mask)
+                print(self.requested_species_ids)
+                print(self._elements_in_kromer_plot)
         else:
             """ if the length of self._elements_in_kromer_plot is less than the requested number of elements in the model,
             then this requested length is updated to be the length of length of self._elements_in_kromer_plot """
             self._nelements = len(self._elements_in_kromer_plot)
+
         return self._elements_in_kromer_plot
 
     def _reset_cache(self):
@@ -437,6 +451,24 @@ class tardis_kromer_plotter(object):
         self._ylim = ylim
         self._twinx = twinx
 
+        """ the species list can contain either a specific element, a specific ion, a range of ions, or any combination of these
+        if the list contains a range of ions, separate each one into a new entry in the species list """
+        full_species_list = []
+        if species_list != None:
+            for species in species_list:
+                """ check if a hyphen is present. If it is, then it indicates a range of ions. Add each ion in that range to the list """
+                if "-" in species:
+                    element = species.split(" ")[0]
+                    first_ion_numeral = roman_to_int(species.split(" ")[-1].split("-")[0])
+                    second_ion_numeral = roman_to_int(species.split(" ")[-1].split("-")[-1])
+                    for i in np.arange(first_ion_numeral, second_ion_numeral+1):
+                        full_species_list.append(element + " " + int_to_roman(i))
+                else:
+                    full_species_list.append(species)
+            print(full_species_list)
+        self._species_list = full_species_list
+
+
         """ if no nelements and no species list is specified, then the number of elements to be included
         in the colourbar is determined from the list of unique elements that appear in the model """
         if nelements == None and species_list == None:
@@ -445,12 +477,11 @@ class tardis_kromer_plotter(object):
             )
         elif nelements == None and species_list != None:
             """ if species_list has been specified, then the number of elements to be included is set to the length of that list """
-            self._nelements = len(species_list)
+            self._nelements = len(self._species_list)
         else:
             """ if nelements has been specified, then the number of elements to be included is set to the length of that list"""
             self._nelements = nelements
 
-        self._species_list = species_list
 
         if xlim == None:
             self._xlim = [
@@ -498,9 +529,11 @@ class tardis_kromer_plotter(object):
         weights = [self.weights_noint, self.weights_escat]
         colors = ["black", "grey"]
 
-        self.elements_in_kromer_plot = self.line_info
+        self._elements_in_kromer_plot = self.line_info
+
 
         for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
+            print(zi)
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
             ion_number = zi % 100
@@ -508,7 +541,7 @@ class tardis_kromer_plotter(object):
 
             """ if the ion is not included in our list for the colourbar, then its contribution
             is added here to the miscellaneous grey shaded region of the plot"""
-            if zi not in self.elements_in_kromer_plot[:, 0]:
+            if zi not in self._elements_in_kromer_plot[:, 0]:
 
                 mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
@@ -524,7 +557,7 @@ class tardis_kromer_plotter(object):
 
             """if the ion is included in our list for the colourbar, then its
             contribution is added here as a unique colour to the plot"""
-            if zi in self.elements_in_kromer_plot[:, 0]:
+            if zi in self._elements_in_kromer_plot[:, 0]:
 
                 mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
@@ -582,7 +615,7 @@ class tardis_kromer_plotter(object):
         weights = []
         colors = []
 
-        self.elements_in_kromer_plot = self.line_info
+        self._elements_in_kromer_plot = self.line_info
 
         for zi in np.unique(self.line_out_infos_within_xlims.ion_id.values, return_counts=False,):
             """zi is the unique 4-digit code for the species in the model
@@ -592,7 +625,7 @@ class tardis_kromer_plotter(object):
 
             """if the ion is not included in our list for the colourbar, then its contribution
             is added here to the miscellaneous grey shaded region of the plot"""
-            if zi not in self.elements_in_kromer_plot[:, 0]:
+            if zi not in self._elements_in_kromer_plot[:, 0]:
 
                 mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
@@ -607,7 +640,7 @@ class tardis_kromer_plotter(object):
 
             """if the ion is included in our list for the colourbar, then its
             contribution is added here as a unique colour to the plot"""
-            if zi in self.elements_in_kromer_plot[:, 0]:
+            if zi in self._elements_in_kromer_plot[:, 0]:
 
                 mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
@@ -642,12 +675,17 @@ class tardis_kromer_plotter(object):
         """generate the custom color map, linking colours with atomic
         numbers"""
 
-        self.elements_in_kromer_plot = self.line_info
+        self._elements_in_kromer_plot = self.line_info
+        print("Colour elements")
+        print(self._elements_in_kromer_plot)
 
         values = [
             self.cmap(float(i) / float(self._nelements))
             for i in range(self._nelements)
         ]
+
+        print(values)
+        print(self._nelements)
 
         custcmap = matplotlib.colors.ListedColormap(values)
         bounds = np.arange(self._nelements) + 0.5
@@ -657,12 +695,15 @@ class tardis_kromer_plotter(object):
 
         """if a species_list has been specified..."""
         if self._species_list != None:
+            print("Labels")
+            print(self._species_list)
             labels = self._species_list
         else:
+            print(self._elements_in_kromer_plot)
             """ if no species_list specified, generate the labels this way"""
             labels = [
                       inv_elements[zi].capitalize()
-                      for zi in self.elements_in_kromer_plot[:, 0]
+                      for zi in self._elements_in_kromer_plot[:, 0]
                       ]
 
         mainax = self.ax
