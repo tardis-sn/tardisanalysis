@@ -352,27 +352,24 @@ class tardis_kromer_plotter(object):
 
         """ if the length of self._elements_in_kromer_plot exceeds the requested number
         of elements to be included in the colourbar, then this if statement applies """
-        if len(self._elements_in_kromer_plot) > self._nelements:
-            """ if we haven't specified a species list..."""
-            if self._species_list == None:
-                self._elements_in_kromer_plot = self._elements_in_kromer_plot[
-                    np.argsort(self._elements_in_kromer_plot[:, 1])[::-1]
-                ]
-                self._elements_in_kromer_plot = self._elements_in_kromer_plot[
-                    : self._nelements
-                ]
-                self._elements_in_kromer_plot = self._elements_in_kromer_plot[
-                    np.argsort(self._elements_in_kromer_plot[:, 0])
-                ]
-            else:
-                """ if we have specified a species list... """
-                mask = np.in1d(self._elements_in_kromer_plot[:, 0], self.requested_species_ids)
-                self._elements_in_kromer_plot = self._elements_in_kromer_plot[mask]
+        if self._species_list != None:
+            """ if we have specified a species list... """
+            mask = np.in1d(self._elements_in_kromer_plot[:, 0], self.requested_species_ids)
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[mask]
+        elif  len(self._elements_in_kromer_plot) > self._nelements:
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                np.argsort(self._elements_in_kromer_plot[:, 1])[::-1]
+            ]
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                : self._nelements
+            ]
+            self._elements_in_kromer_plot = self._elements_in_kromer_plot[
+                np.argsort(self._elements_in_kromer_plot[:, 0])
+            ]
         else:
             """ if the length of self._elements_in_kromer_plot is less than the requested number of elements in the model,
             then this requested length is updated to be the length of length of self._elements_in_kromer_plot """
             self._nelements = len(self._elements_in_kromer_plot)
-
         return self._elements_in_kromer_plot
 
     def _reset_cache(self):
@@ -761,6 +758,7 @@ class tardis_kromer_plotter(object):
                 ion_numeral = int_to_roman(ion_number + 1)
                 # using elements dictionary to get atomic symbol for the species
                 atomic_symbol = inv_elements[atomic_number].capitalize()
+
                 if (atomic_number in self.keep_colour) & (atomic_symbol not in labels):
                     # compiling the label, and adding it to the list
                     label = f"{atomic_symbol}"
