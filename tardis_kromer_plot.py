@@ -596,7 +596,7 @@ class tardis_kromer_plotter(object):
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
                 weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
                 colors.append(self.cmap(float(ii) / float(self._nelements)))
-                if (atomic_number in self.keep_colour) & (atomic_number != previous_atomic_number):
+                if (atomic_number in self.keep_colour) & (atomic_number != previous_atomic_number) & (previous_atomic_number != 0):
                     ii = ii
                 else:
                     ii = ii + 1
@@ -703,7 +703,7 @@ class tardis_kromer_plotter(object):
                 lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
                 weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
                 colors.append(self.cmap(float(ii) / float(self._nelements)))
-                if (atomic_number in self.keep_colour) & (atomic_number != previous_atomic_number):
+                if (atomic_number in self.keep_colour) & (atomic_number != previous_atomic_number) & (previous_atomic_number != 0):
                     ii = ii
                 else:
                     ii = ii + 1
