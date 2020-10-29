@@ -589,6 +589,21 @@ class tardis_kromer_plotter(object):
             contribution is added here as a unique colour to the plot"""
             if zi in self._elements_in_kromer_plot[:, 0]:
 
+
+                if (atomic_number in self.keep_colour):
+                    if (previous_atomic_number == 0) | (previous_atomic_number == atomic_number):
+                        ii = ii
+                        previous_atomic_number = atomic_number
+                    else:
+                        ii = ii + 1
+                        previous_atomic_number = 0
+                elif (previous_atomic_number == 0):
+                    ii = ii
+                    previous_atomic_number = atomic_number
+                else:
+                    ii = ii + 1
+                    previous_atomic_number == atomic_number
+
                 if self._species_list != None:
                     mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 else:
@@ -596,12 +611,9 @@ class tardis_kromer_plotter(object):
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
                 weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
                 colors.append(self.cmap(float(ii) / float(self._nelements)))
-                if (atomic_number in self.keep_colour) & (atomic_number != previous_atomic_number) & (previous_atomic_number != 0):
-                    ii = ii
-                else:
-                    ii = ii + 1
 
-                previous_atomic_number = atomic_number
+
+
 
         Lnorm = 0
         for w, lam in zip(weights, lams):
@@ -695,6 +707,20 @@ class tardis_kromer_plotter(object):
             contribution is added here as a unique colour to the plot"""
             if zi in self._elements_in_kromer_plot[:, 0]:
 
+                if (atomic_number in self.keep_colour):
+                    if (previous_atomic_number == 0) | (previous_atomic_number == atomic_number):
+                        ii = ii
+                        previous_atomic_number = atomic_number
+                    else:
+                        ii = ii + 1
+                        previous_atomic_number = 0
+                elif (previous_atomic_number == 0):
+                    ii = ii
+                    previous_atomic_number = atomic_number
+                else:
+                    ii = ii + 1
+                    previous_atomic_number == atomic_number
+
                 if self._species_list != None:
                     mask = ((self.line_out_infos.atomic_number.values == atomic_number) & (self.line_out_infos.ion_number.values == ion_number))
                 else:
@@ -703,11 +729,7 @@ class tardis_kromer_plotter(object):
                 lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
                 weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
                 colors.append(self.cmap(float(ii) / float(self._nelements)))
-                if (atomic_number in self.keep_colour) & (atomic_number != previous_atomic_number) & (previous_atomic_number != 0):
-                    ii = ii
-                else:
-                    ii = ii + 1
-                previous_atomic_number = atomic_number
+
 
         Lnorm = 0
         for w, lam in zip(weights, lams):
