@@ -202,6 +202,24 @@ class KromerPlotLib:
         # Wavelengths
         wvl = self.sim.runner.spectrum_virtual.wavelength
 
+        # Filter bins and wavelengths based on packet_wvl_range ------------------
+        if packet_wvl_range:
+            packet_nu_range = packet_wvl_range.to("Hz", u.spectral())
+            # Index of value just before the 1st value that is > packet_nu_range[1]
+            start_idx = np.argmax(bins > packet_nu_range[1]) - 1
+            # Index of the last value that is < packet_nu_range[0]
+            end_idx = np.argmin(bins < packet_nu_range[0])
+            bins = bins[start_idx:end_idx]
+
+            self.packet_wvl_range_mask = (wvl > packet_wvl_range[0]) & (
+                wvl < packet_wvl_range[1]
+            )
+            wvl = wvl[self.packet_wvl_range_mask]
+        else:
+            self.packet_wvl_range_mask = np.ones(wvl.size, dtype=bool)
+
+        assert bins.size == wvl.size + 1
+
         self._plotEmission(
             bins=bins,
             wvl=wvl,
@@ -214,7 +232,7 @@ class KromerPlotLib:
         )
         self._plotPhotosphere()
 
-        self.ax.legend(fontsize=15)
+        self.ax.legend(fontsize=12)
         self.ax.set_xlabel("Wavelength $(\AA)$", fontsize=15)
         if self.is_flux:
             self.ax.set_ylabel(
@@ -296,8 +314,12 @@ class KromerPlotLib:
         # Plot virtual spectrum
         if show_virtspec:
             self.ax.plot(
-                self.sim.runner.spectrum_virtual.wavelength,
-                self.sim.runner.spectrum_virtual.luminosity_density_lambda
+                self.sim.runner.spectrum_virtual.wavelength[
+                    self.packet_wvl_range_mask
+                ],
+                self.sim.runner.spectrum_virtual.luminosity_density_lambda[
+                    self.packet_wvl_range_mask
+                ]
                 / self.lum_to_flux,
                 "--b",
                 label="Virtual Spectrum",
@@ -316,8 +338,12 @@ class KromerPlotLib:
         )
         L_lambda_noint = (
             L_nu_noint
-            * self.sim.runner.spectrum_virtual.frequency
-            / self.sim.runner.spectrum_virtual.wavelength
+            * self.sim.runner.spectrum_virtual.frequency[
+                self.packet_wvl_range_mask
+            ]
+            / self.sim.runner.spectrum_virtual.wavelength[
+                self.packet_wvl_range_mask
+            ]
         )
 
         self.ax.fill_between(
@@ -339,8 +365,12 @@ class KromerPlotLib:
         )
         L_lambda_escatter = (
             L_nu_escatter
-            * self.sim.runner.spectrum_virtual.frequency
-            / self.sim.runner.spectrum_virtual.wavelength
+            * self.sim.runner.spectrum_virtual.frequency[
+                self.packet_wvl_range_mask
+            ]
+            / self.sim.runner.spectrum_virtual.wavelength[
+                self.packet_wvl_range_mask
+            ]
         )
 
         self.ax.fill_between(
@@ -396,8 +426,12 @@ class KromerPlotLib:
             )
             L_lambda_el = (
                 L_nu_el
-                * self.sim.runner.spectrum_virtual.frequency
-                / self.sim.runner.spectrum_virtual.wavelength
+                * self.sim.runner.spectrum_virtual.frequency[
+                    self.packet_wvl_range_mask
+                ]
+                / self.sim.runner.spectrum_virtual.wavelength[
+                    self.packet_wvl_range_mask
+                ]
             )
 
             self.ax.fill_between(
@@ -435,10 +469,14 @@ class KromerPlotLib:
         else:
             packet_nu_range = packet_wvl_range.to("Hz", u.spectral())
             packet_nu_line_range_mask = (
-                self.kromer_packet_df_line_interaction["nus"]
+                self.kromer_packet_df_line_interaction[
+                    "last_line_interaction_in_nu"
+                ]
                 < packet_nu_range[0]
             ) & (
-                self.kromer_packet_df_line_interaction["nus"]
+                self.kromer_packet_df_line_interaction[
+                    "last_line_interaction_in_nu"
+                ]
                 > packet_nu_range[1]
             )
 
@@ -464,8 +502,12 @@ class KromerPlotLib:
             )
             L_lambda_el = (
                 L_nu_el
-                * self.sim.runner.spectrum_virtual.frequency
-                / self.sim.runner.spectrum_virtual.wavelength
+                * self.sim.runner.spectrum_virtual.frequency[
+                    self.packet_wvl_range_mask
+                ]
+                / self.sim.runner.spectrum_virtual.wavelength[
+                    self.packet_wvl_range_mask
+                ]
             )
 
             self.ax.fill_between(
@@ -489,7 +531,9 @@ class KromerPlotLib:
         """
         Lph = (
             abb.blackbody_lambda(
-                self.sim.runner.spectrum_virtual.wavelength,
+                self.sim.runner.spectrum_virtual.wavelength[
+                    self.packet_wvl_range_mask
+                ],
                 self.sim.model.t_inner,
             )
             * 4
@@ -498,7 +542,9 @@ class KromerPlotLib:
             * u.sr
         ).to("erg / (AA s)")
         self.ax.plot(
-            self.sim.runner.spectrum_virtual.wavelength,
+            self.sim.runner.spectrum_virtual.wavelength[
+                self.packet_wvl_range_mask
+            ],
             Lph / self.lum_to_flux,
             "--r",
             label="Blackbody Photosphere",
