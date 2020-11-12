@@ -748,23 +748,22 @@ class tardis_kromer_plotter(object):
             """if the ion is included in our list for the colourbar, then its
             contribution is added here as a unique colour to the plot"""
             if zi in self._elements_in_kromer_plot[:, 0]:
-
-                if atomic_number in self.keep_colour:
-                    if (previous_atomic_number == 0) | (
-                        previous_atomic_number == atomic_number
-                    ):
+                """ if this is the first ion, don't update the colour """
+                if (previous_atomic_number == 0):
+                    ii = ii
+                    previous_atomic_number = atomic_number
+                elif atomic_number in self.keep_colour:
+                    """ if this ion is grouped into an element, check whether this is the first ion of that element to occur
+                    if it is, then update the colour. If it isn't then don't update the colour"""
+                    if previous_atomic_number == atomic_number:
                         ii = ii
                         previous_atomic_number = atomic_number
                     else:
-                        ii = ii + 1
-                        previous_atomic_number = 0
-                elif previous_atomic_number == 0:
-                    ii = ii
-                    previous_atomic_number = atomic_number
+                        ii = ii +1
+                        previous_atomic_number = atomic_number
                 else:
                     ii = ii + 1
-                    previous_atomic_number == atomic_number
-
+                    previous_atomic_number = atomic_number
                 if self._species_list != None:
                     mask = (
                         self.line_out_infos.atomic_number.values == atomic_number
