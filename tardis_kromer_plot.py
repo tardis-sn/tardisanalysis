@@ -623,31 +623,29 @@ class tardis_kromer_plotter(object):
             """if the ion is included in our list for the colourbar, then its
             contribution is added here as a colour to the plot"""
             if zi in self._elements_in_kromer_plot[:, 0]:
-                """ check if the element should have all ions the same colour """
-                if atomic_number in self.keep_colour:
-                    """ if this is the first time encountering this ion, don't update the colour """
-                    if (previous_atomic_number == 0) | (
-                        previous_atomic_number == atomic_number
-                    ):
+                """ if this is the first ion, don't update the colour """
+                if (previous_atomic_number == 0):
+                    ii = ii
+                    previous_atomic_number = atomic_number
+                elif atomic_number in self.keep_colour:
+                    """ if this ion is grouped into an element, check whether this is the first ion of that element to occur
+                    if it is, then update the colour. If it isn't then don't update the colour"""
+                    if previous_atomic_number == atomic_number:
                         ii = ii
                         previous_atomic_number = atomic_number
                     else:
-                        ii = ii + 1
-                        previous_atomic_number = 0
-                elif previous_atomic_number == 0:
-                    """ if this is the first ion, don't update the colour """
-                    ii = ii
-                    previous_atomic_number = atomic_number
+                        ii = ii +1
+                        previous_atomic_number = atomic_number
                 else:
                     ii = ii + 1
-                    previous_atomic_number == atomic_number
-
+                    previous_atomic_number = atomic_number
                 if self._species_list != None:
                     mask = (
                         self.line_out_infos.atomic_number.values == atomic_number
                     ) & (self.line_out_infos.ion_number.values == ion_number)
                 else:
                     mask = self.line_out_infos.atomic_number.values == atomic_number
+
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
                 weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
                 colors.append(self.cmap(float(ii) / float(self._nelements)))
