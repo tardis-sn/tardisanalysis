@@ -445,6 +445,10 @@ class tardis_kromer_plotter(object):
         ylim : tuple or array-like or None
             flux limits for the display; if None, the y-axis is automatically
             scaled (default None)
+        nelements: int or None
+            number of elements that should be included in the Kromer plots.
+            The top nelements are determined based on those with the most packet 
+            interactions
         twinx : boolean
             determines where the absorption part of the Kromer plot is placed,
             if True, the absorption part is attached at the top of the main
