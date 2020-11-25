@@ -324,7 +324,7 @@ class tardis_kromer_plotter(object):
         This is used if the user requests a mix of ions and elements. """
         self.keep_colour = []
         """ this reads in the species specified by user and generates the 4-digit ID keys for them """
-        if self._species_list != None:
+        if self._species_list is not None:
             """ create a list of the ions ids requested by species_list """
             requested_species_ids = []
             """ check if there are any digits in the species list. If there are then exit
@@ -355,7 +355,7 @@ class tardis_kromer_plotter(object):
                 ]
 
         """ now we are getting the list of unique values for 'ion_id' if we would like to use species. Otherwise we get unique atomic numbers"""
-        if self._species_list != None:
+        if self._species_list is not None:
             self._elements_in_kromer_plot = np.c_[
                 np.unique(
                     self.line_out_infos_within_xlims.ion_id.values,
@@ -372,7 +372,7 @@ class tardis_kromer_plotter(object):
 
         """ if the length of self._elements_in_kromer_plot exceeds the requested number
         of elements to be included in the colourbar, then this if statement applies """
-        if self._species_list != None:
+        if self._species_list is not None:
             """ if we have specified a species list then only take those species that are requested """
             mask = np.in1d(
                 self._elements_in_kromer_plot[:, 0], self.requested_species_ids
@@ -470,7 +470,7 @@ class tardis_kromer_plotter(object):
         """ the species list can contain either a specific element, a specific ion, a range of ions, or any combination of these
         if the list contains a range of ions, separate each one into a new entry in the species list """
         full_species_list = []
-        if species_list != None:
+        if species_list is not None:
             for species in species_list:
                 """ check if a hyphen is present. If it is, then it indicates a range of ions. Add each ion in that range to the list """
                 if "-" in species:
@@ -491,16 +491,16 @@ class tardis_kromer_plotter(object):
 
         """ if no nelements and no species list is specified, then the number of elements to be included
         in the colourbar is determined from the list of unique elements that appear in the model """
-        if nelements == None and species_list == None:
+        if nelements is None and species_list is None:
             self._nelements = len(np.unique(self.line_out_infos.atomic_number.values))
-        elif nelements == None and species_list != None:
+        elif nelements is None and species_list is not None:
             """ if species_list has been specified, then the number of elements to be included is set to the length of that list """
             self._nelements = len(self._species_list)
         else:
             """ if nelements has been specified, then the number of elements to be included is set to the length of that list"""
             self._nelements = nelements
 
-        if xlim == None:
+        if xlim is None:
             self._xlim = [
                 np.min(self.mdl.spectrum_wave).value,
                 np.max(self.mdl.spectrum_wave).value,
@@ -519,7 +519,7 @@ class tardis_kromer_plotter(object):
         """ this will reset nelements if species_list is turned on
         it's possible to request a species that doesn't appear in the plot
         this will ensure that species isn't counted when determining labels and colours"""
-        if self._species_list != None:
+        if self._species_list is not None:
             labels = []
             for species in self._species_list:
                 if " " in species:
@@ -567,7 +567,7 @@ class tardis_kromer_plotter(object):
         colors = ["black", "grey"]
 
         """ if species_list is entered, the ion_id will be used to determine the colours, etc"""
-        if self._species_list != None:
+        if self._species_list is not None:
             values_to_compare = np.unique(
                 self.line_out_infos_within_xlims.ion_id.values,
                 return_counts=False,
@@ -585,7 +585,7 @@ class tardis_kromer_plotter(object):
         for zi in values_to_compare:
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
-            if self._species_list != None:
+            if self._species_list is not None:
                 ion_number = zi % 100
                 atomic_number = (zi - ion_number) / 100
             else:
@@ -595,7 +595,7 @@ class tardis_kromer_plotter(object):
             is added here to the miscellaneous grey shaded region of the plot"""
             if zi not in self._elements_in_kromer_plot[:, 0]:
                 """ if species_list is given then use the atomic number and ion_number to peforming masking """
-                if self._species_list != None:
+                if self._species_list is not None:
                     mask = (
                         self.line_out_infos.atomic_number.values == atomic_number
                     ) & (self.line_out_infos.ion_number.values == ion_number)
@@ -614,7 +614,7 @@ class tardis_kromer_plotter(object):
         for zi in values_to_compare:
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
-            if self._species_list != None:
+            if self._species_list is not None:
                 ion_number = zi % 100
                 atomic_number = (zi - ion_number) / 100
             else:
@@ -639,7 +639,7 @@ class tardis_kromer_plotter(object):
                 else:
                     ii = ii + 1
                     previous_atomic_number = atomic_number
-                if self._species_list != None:
+                if self._species_list is not None:
                     mask = (
                         self.line_out_infos.atomic_number.values == atomic_number
                     ) & (self.line_out_infos.ion_number.values == ion_number)
@@ -700,7 +700,7 @@ class tardis_kromer_plotter(object):
         weights = []
         colors = []
 
-        if self._species_list != None:
+        if self._species_list is not None:
             values_to_compare = np.unique(
                 self.line_out_infos_within_xlims.ion_id.values,
                 return_counts=False,
@@ -714,7 +714,7 @@ class tardis_kromer_plotter(object):
         for zi in values_to_compare:
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
-            if self._species_list != None:
+            if self._species_list is not None:
                 ion_number = zi % 100
                 atomic_number = (zi - ion_number) / 100
             else:
@@ -724,7 +724,7 @@ class tardis_kromer_plotter(object):
             is added here to the miscellaneous grey shaded region of the plot"""
             if zi not in self._elements_in_kromer_plot[:, 0]:
 
-                if self._species_list != None:
+                if self._species_list is not None:
                     mask = (
                         self.line_out_infos.atomic_number.values == atomic_number
                     ) & (self.line_out_infos.ion_number.values == ion_number)
@@ -739,7 +739,7 @@ class tardis_kromer_plotter(object):
         for zi in values_to_compare:
             """zi is the unique 4-digit code for the species in the model
             determining the atomic and ion numbers for all ions in our model"""
-            if self._species_list != None:
+            if self._species_list is not None:
                 ion_number = zi % 100
                 atomic_number = (zi - ion_number) / 100
             else:
@@ -764,7 +764,7 @@ class tardis_kromer_plotter(object):
                 else:
                     ii = ii + 1
                     previous_atomic_number = atomic_number
-                if self._species_list != None:
+                if self._species_list is not None:
                     mask = (
                         self.line_out_infos.atomic_number.values == atomic_number
                     ) & (self.line_out_infos.ion_number.values == ion_number)
@@ -812,7 +812,7 @@ class tardis_kromer_plotter(object):
         mappable.set_array(np.linspace(1, self.zmax + 1, 256))
 
         """if a species_list has been specified..."""
-        if self._species_list != None:
+        if self._species_list is not None:
             labels = []
             for zi in self._elements_in_kromer_plot:
 
