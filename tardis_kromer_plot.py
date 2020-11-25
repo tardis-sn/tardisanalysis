@@ -314,28 +314,28 @@ class tardis_kromer_plotter(object):
             & (self.line_out_infos.wavelength <= self._xlim[1])
         ]
 
-        """this generates the 4-digit ID for all transitions in the model (e.g. Fe III line --> 2602)"""
+        # this generates the 4-digit ID for all transitions in the model (e.g. Fe III line --> 2602)
         self.line_out_infos_within_xlims["ion_id"] = (
             self.line_out_infos_within_xlims["atomic_number"] * 100
             + self.line_out_infos_within_xlims["ion_number"]
         )
 
-        """ this is a list that will hold which elements should all be in the same colour.
-        This is used if the user requests a mix of ions and elements. """
+        # this is a list that will hold which elements should all be in the same colour.
+        # This is used if the user requests a mix of ions and elements.
         self.keep_colour = []
-        """ this reads in the species specified by user and generates the 4-digit ID keys for them """
+        # this reads in the species specified by user and generates the 4-digit ID keys for them
         if self._species_list is not None:
-            """ create a list of the ions ids requested by species_list """
+            # create a list of the ions ids requested by species_list
             requested_species_ids = []
-            """ check if there are any digits in the species list. If there are then exit
-            species_list should only contain species in the Roman numeral format, e.g. Si II, and each ion must contain a space"""
+            # check if there are any digits in the species list. If there are then exit
+            # species_list should only contain species in the Roman numeral format, e.g. Si II, and each ion must contain a space
             if any(char.isdigit() for char in " ".join(self._species_list)) == True:
                 raise ValueError(
                     "All species must be in Roman numeral form, e.g. Si II"
                 )
             else:
-                """go through each of the request species. Check whether it is an element or ion (ions have spaces).
-                If it is an element, add all possible ions to the ions list. Otherwise just add the requested ion"""
+                # go through each of the request species. Check whether it is an element or ion (ions have spaces).
+                # If it is an element, add all possible ions to the ions list. Otherwise just add the requested ion
                 for species in self._species_list:
                     if " " in species:
                         requested_species_ids.append(
@@ -354,7 +354,7 @@ class tardis_kromer_plotter(object):
                     species_id for list in requested_species_ids for species_id in list
                 ]
 
-        """ now we are getting the list of unique values for 'ion_id' if we would like to use species. Otherwise we get unique atomic numbers"""
+        # now we are getting the list of unique values for 'ion_id' if we would like to use species. Otherwise we get unique atomic numbers
         if self._species_list is not None:
             self._elements_in_kromer_plot = np.c_[
                 np.unique(
@@ -370,16 +370,16 @@ class tardis_kromer_plotter(object):
                 )
             ]
 
-        """ if the length of self._elements_in_kromer_plot exceeds the requested number
-        of elements to be included in the colourbar, then this if statement applies """
+        # if the length of self._elements_in_kromer_plot exceeds the requested number
+        # of elements to be included in the colourbar, then this if statement applies
         if self._species_list is not None:
-            """ if we have specified a species list then only take those species that are requested """
+            # if we have specified a species list then only take those species that are requested
             mask = np.in1d(
                 self._elements_in_kromer_plot[:, 0], self.requested_species_ids
             )
             self._elements_in_kromer_plot = self._elements_in_kromer_plot[mask]
         elif len(self._elements_in_kromer_plot) > self._nelements:
-            """ if nelements is specified, then sort to find the top contributing elements, pick the top nelements, and sort back by atomic number """
+            # if nelements is specified, then sort to find the top contributing elements, pick the top nelements, and sort back by atomic number
             self._elements_in_kromer_plot = self._elements_in_kromer_plot[
                 np.argsort(self._elements_in_kromer_plot[:, 1])[::-1]
             ]
@@ -390,8 +390,8 @@ class tardis_kromer_plotter(object):
                 np.argsort(self._elements_in_kromer_plot[:, 0])
             ]
         else:
-            """if the length of self._elements_in_kromer_plot is less than the requested number of elements in the model,
-            then this requested length is updated to be the length of length of self._elements_in_kromer_plot"""
+            # if the length of self._elements_in_kromer_plot is less than the requested number of elements in the model,
+            # then this requested length is updated to be the length of length of self._elements_in_kromer_plot
             self._nelements = len(self._elements_in_kromer_plot)
         return self._elements_in_kromer_plot
 
@@ -467,12 +467,12 @@ class tardis_kromer_plotter(object):
         self._ylim = ylim
         self._twinx = twinx
 
-        """ the species list can contain either a specific element, a specific ion, a range of ions, or any combination of these
-        if the list contains a range of ions, separate each one into a new entry in the species list """
+        # the species list can contain either a specific element, a specific ion, a range of ions, or any combination of these
+        # if the list contains a range of ions, separate each one into a new entry in the species list
         full_species_list = []
         if species_list is not None:
             for species in species_list:
-                """ check if a hyphen is present. If it is, then it indicates a range of ions. Add each ion in that range to the list """
+                # check if a hyphen is present. If it is, then it indicates a range of ions. Add each ion in that range to the list
                 if "-" in species:
                     element = species.split(" ")[0]
                     first_ion_numeral = roman_to_int(
@@ -489,15 +489,15 @@ class tardis_kromer_plotter(object):
         else:
             self._species_list = None
 
-        """ if no nelements and no species list is specified, then the number of elements to be included
-        in the colourbar is determined from the list of unique elements that appear in the model """
+        # if no nelements and no species list is specified, then the number of elements to be included
+        # in the colourbar is determined from the list of unique elements that appear in the model
         if nelements is None and species_list is None:
             self._nelements = len(np.unique(self.line_out_infos.atomic_number.values))
         elif nelements is None and species_list is not None:
-            """ if species_list has been specified, then the number of elements to be included is set to the length of that list """
+            # if species_list has been specified, then the number of elements to be included is set to the length of that list
             self._nelements = len(self._species_list)
         else:
-            """ if nelements has been specified, then the number of elements to be included is set to the length of that list"""
+            # if nelements has been specified, then the number of elements to be included is set to the length of that list
             self._nelements = nelements
 
         if xlim is None:
@@ -513,12 +513,12 @@ class tardis_kromer_plotter(object):
         else:
             self._bins = bins
 
-        """ get the elements/species to be included in the plot """
+        # get the elements/species to be included in the plot
         self._elements_in_kromer_plot = self.line_info
 
-        """ this will reset nelements if species_list is turned on
-        it's possible to request a species that doesn't appear in the plot
-        this will ensure that species isn't counted when determining labels and colours"""
+        # this will reset nelements if species_list is turned on
+        # it's possible to request a species that doesn't appear in the plot
+        # this will ensure that species isn't counted when determining labels and colours
         if self._species_list is not None:
             labels = []
             for species in self._species_list:
@@ -566,41 +566,41 @@ class tardis_kromer_plotter(object):
         weights = [self.weights_noint, self.weights_escat]
         colors = ["black", "grey"]
 
-        """ if species_list is entered, the ion_id will be used to determine the colours, etc"""
+        # if species_list is entered, the ion_id will be used to determine the colours, etc
         if self._species_list is not None:
             values_to_compare = np.unique(
                 self.line_out_infos_within_xlims.ion_id.values,
                 return_counts=False,
             )
         else:
-            """ otherwise, if there is no species_list, then the atomic_number is used for colours, etc."""
+            # otherwise, if there is no species_list, then the atomic_number is used for colours, etc.
             values_to_compare = np.unique(
                 self.line_out_infos_within_xlims.atomic_number.values,
                 return_counts=False,
             )
 
-        """ this first for loop is to go through all elements and colour all elements as 'Other' if they weren't requested
-        or among the top nelements. The reason to do it twice is to ensure that the colours are stacked appropriately,
-        e.g. all 'other' are together """
+        # this first for loop is to go through all elements and colour all elements as 'Other' if they weren't requested
+        # or among the top nelements. The reason to do it twice is to ensure that the colours are stacked appropriately,
+        # e.g. all 'other' are together
         for zi in values_to_compare:
-            """zi is the unique 4-digit code for the species in the model
-            determining the atomic and ion numbers for all ions in our model"""
+            # zi is the unique 4-digit code for the species in the model
+            # determining the atomic and ion numbers for all ions in our model
             if self._species_list is not None:
                 ion_number = zi % 100
                 atomic_number = (zi - ion_number) / 100
             else:
                 atomic_number = zi
 
-            """ if the ion is not included in our list for the colourbar, then its contribution
-            is added here to the miscellaneous grey shaded region of the plot"""
+            # if the ion is not included in our list for the colourbar, then its contribution
+            # is added here to the miscellaneous grey shaded region of the plot
             if zi not in self._elements_in_kromer_plot[:, 0]:
-                """ if species_list is given then use the atomic number and ion_number to peforming masking """
+                # if species_list is given then use the atomic number and ion_number to peforming masking
                 if self._species_list is not None:
                     mask = (
                         self.line_out_infos.atomic_number.values == atomic_number
                     ) & (self.line_out_infos.ion_number.values == ion_number)
                 else:
-                    """ otherwise only elements are plotted, so only use the atomic number"""
+                    # otherwise only elements are plotted, so only use the atomic number
                     mask = self.line_out_infos.atomic_number.values == atomic_number
 
                 lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
@@ -608,28 +608,28 @@ class tardis_kromer_plotter(object):
                 colors.append("silver")
 
         ii = 0
-        """ this is a variable that will allow for situations where elements and ions are requested in the same list
-        this will ensure that any ions for a requested element will all be coloured the same """
+        # this is a variable that will allow for situations where elements and ions are requested in the same list
+        # this will ensure that any ions for a requested element will all be coloured the same
         previous_atomic_number = 0
         for zi in values_to_compare:
-            """zi is the unique 4-digit code for the species in the model
-            determining the atomic and ion numbers for all ions in our model"""
+            # zi is the unique 4-digit code for the species in the model
+            # determining the atomic and ion numbers for all ions in our model
             if self._species_list is not None:
                 ion_number = zi % 100
                 atomic_number = (zi - ion_number) / 100
             else:
                 atomic_number = zi
 
-            """if the ion is included in our list for the colourbar, then its
-            contribution is added here as a colour to the plot"""
+            # if the ion is included in our list for the colourbar, then its
+            # contribution is added here as a colour to the plot
             if zi in self._elements_in_kromer_plot[:, 0]:
-                """ if this is the first ion, don't update the colour """
+                # if this is the first ion, don't update the colour
                 if (previous_atomic_number == 0):
                     ii = ii
                     previous_atomic_number = atomic_number
                 elif atomic_number in self.keep_colour:
-                    """ if this ion is grouped into an element, check whether this is the first ion of that element to occur
-                    if it is, then update the colour. If it isn't then don't update the colour"""
+                    # if this ion is grouped into an element, check whether this is the first ion of that element to occur
+                    # if it is, then update the colour. If it isn't then don't update the colour
                     if previous_atomic_number == atomic_number:
                         ii = ii
                         previous_atomic_number = atomic_number
@@ -712,16 +712,16 @@ class tardis_kromer_plotter(object):
             )
 
         for zi in values_to_compare:
-            """zi is the unique 4-digit code for the species in the model
-            determining the atomic and ion numbers for all ions in our model"""
+            # zi is the unique 4-digit code for the species in the model
+            # determining the atomic and ion numbers for all ions in our model
             if self._species_list is not None:
                 ion_number = zi % 100
                 atomic_number = (zi - ion_number) / 100
             else:
                 atomic_number = zi
 
-            """if the ion is not included in our list for the colourbar, then its contribution
-            is added here to the miscellaneous grey shaded region of the plot"""
+            # if the ion is not included in our list for the colourbar, then its contribution
+            # is added here to the miscellaneous grey shaded region of the plot
             if zi not in self._elements_in_kromer_plot[:, 0]:
 
                 if self._species_list is not None:
@@ -737,24 +737,24 @@ class tardis_kromer_plotter(object):
         ii = 0
         previous_atomic_number = 0
         for zi in values_to_compare:
-            """zi is the unique 4-digit code for the species in the model
-            determining the atomic and ion numbers for all ions in our model"""
+            # zi is the unique 4-digit code for the species in the model
+            # determining the atomic and ion numbers for all ions in our model
             if self._species_list is not None:
                 ion_number = zi % 100
                 atomic_number = (zi - ion_number) / 100
             else:
                 atomic_number = zi
 
-            """if the ion is included in our list for the colourbar, then its
-            contribution is added here as a unique colour to the plot"""
+            # if the ion is included in our list for the colourbar, then its
+            # contribution is added here as a unique colour to the plot
             if zi in self._elements_in_kromer_plot[:, 0]:
-                """ if this is the first ion, don't update the colour """
+                # if this is the first ion, don't update the colour
                 if (previous_atomic_number == 0):
                     ii = ii
                     previous_atomic_number = atomic_number
                 elif atomic_number in self.keep_colour:
-                    """ if this ion is grouped into an element, check whether this is the first ion of that element to occur
-                    if it is, then update the colour. If it isn't then don't update the colour"""
+                    # if this ion is grouped into an element, check whether this is the first ion of that element to occur
+                    # if it is, then update the colour. If it isn't then don't update the colour
                     if previous_atomic_number == atomic_number:
                         ii = ii
                         previous_atomic_number = atomic_number
@@ -811,7 +811,7 @@ class tardis_kromer_plotter(object):
         mappable = cm.ScalarMappable(norm=norm, cmap=custcmap)
         mappable.set_array(np.linspace(1, self.zmax + 1, 256))
 
-        """if a species_list has been specified..."""
+        # if a species_list has been specified...
         if self._species_list is not None:
             labels = []
             for zi in self._elements_in_kromer_plot:
@@ -820,21 +820,21 @@ class tardis_kromer_plotter(object):
                 atomic_number = (zi[0] - ion_number) / 100
 
                 ion_numeral = int_to_roman(ion_number + 1)
-                """ using elements dictionary to get atomic symbol for the species """
+                # using elements dictionary to get atomic symbol for the species
                 atomic_symbol = inv_elements[atomic_number].capitalize()
 
-                """ if the element was requested, and not a specific ion, then add the element symbol to the label list """
+                # if the element was requested, and not a specific ion, then add the element symbol to the label list
                 if (atomic_number in self.keep_colour) & (atomic_symbol not in labels):
-                    """ compiling the label, and adding it to the list """
+                    # compiling the label, and adding it to the list
                     label = f"{atomic_symbol}"
                     labels.append(label)
                 elif atomic_number not in self.keep_colour:
-                    """ otherwise add the ion to the label list """
+                    # otherwise add the ion to the label list
                     label = f"{atomic_symbol}$\,${ion_numeral}"
                     labels.append(label)
 
         else:
-            """ if no species_list specified, generate the labels this way"""
+            # if no species_list specified, generate the labels this way
             labels = [
                 inv_elements[zi].capitalize()
                 for zi in self._elements_in_kromer_plot[:, 0]
