@@ -447,7 +447,7 @@ class tardis_kromer_plotter(object):
             scaled (default None)
         nelements: int or None
             number of elements that should be included in the Kromer plots.
-            The top nelements are determined based on those with the most packet 
+            The top nelements are determined based on those with the most packet
             interactions
         twinx : boolean
             determines where the absorption part of the Kromer plot is placed,
@@ -586,6 +586,8 @@ class tardis_kromer_plotter(object):
         # this first for loop is to go through all elements and colour all elements as 'Other' if they weren't requested
         # or among the top nelements. The reason to do it twice is to ensure that the colours are stacked appropriately,
         # e.g. all 'other' are together
+        other_species_lams = []
+        other_species_weights = []
         for zi in values_to_compare:
             # zi is the unique 4-digit code for the species in the model
             # determining the atomic and ion numbers for all ions in our model
@@ -607,9 +609,15 @@ class tardis_kromer_plotter(object):
                     # otherwise only elements are plotted, so only use the atomic number
                     mask = self.line_out_infos.atomic_number.values == atomic_number
 
-                lams.append((csts.c.cgs / (self.line_out_nu[mask])).to(units.AA))
-                weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
-                colors.append("silver")
+                other_species_lams += (csts.c.cgs / (self.line_out_nu[mask])).to(units.AA).value.tolist()
+                other_species_weights += (self.line_out_L[mask] / self.mdl.time_of_simulation).value.tolist()
+
+        other_species_lams = other_species_lams * units.AA
+        other_species_weights = other_species_weights * units.erg / units.s
+
+        lams.append(other_species_lams)
+        weights.append(other_species_weights)
+        colors.append("silver")
 
         ii = 0
         # this is a variable that will allow for situations where elements and ions are requested in the same list
@@ -715,6 +723,8 @@ class tardis_kromer_plotter(object):
                 return_counts=False,
             )
 
+        other_species_lams = []
+        other_species_weights = []
         for zi in values_to_compare:
             # zi is the unique 4-digit code for the species in the model
             # determining the atomic and ion numbers for all ions in our model
@@ -735,9 +745,17 @@ class tardis_kromer_plotter(object):
                 else:
                     mask = self.line_out_infos.atomic_number.values == atomic_number
 
-                lams.append((csts.c.cgs / (self.line_in_nu[mask])).to(units.AA))
-                weights.append(self.line_in_L[mask] / self.mdl.time_of_simulation)
-                colors.append("silver")
+                other_species_lams += (csts.c.cgs / (self.line_in_nu[mask])).to(units.AA).value.tolist()
+                other_species_weights += (self.line_in_L[mask] / self.mdl.time_of_simulation).value.tolist()
+
+        other_species_lams = other_species_lams * units.AA
+        other_species_weights = other_species_weights * units.erg / units.s
+
+        lams.append(other_species_lams)
+        weights.append(other_species_weights)
+        colors.append("silver")
+
+
         ii = 0
         previous_atomic_number = 0
         for zi in values_to_compare:
