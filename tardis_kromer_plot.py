@@ -7,7 +7,6 @@ import numpy as np
 import astropy.units as units
 import astropy.constants as csts
 import pandas as pd
-import csv
 
 try:
     import astropy.modeling.blackbody as abb
@@ -30,12 +29,10 @@ plt.rcdefaults()
 
 logger = logging.getLogger(__name__)
 
-with open("elements.csv") as f:
-    reader = csv.reader(f, skipinitialspace=True)
-    elements = dict(reader)
-
-inv_elements = dict([(int(v), k) for k, v in elements.items()])
-
+elements = pd.read_csv("elements.csv", names=["chem_symbol", "atomic_no"])
+inv_elements = pd.Series(
+    elements["chem_symbol"], index=elements["atomic_no"]
+).to_dict()
 
 class tardis_kromer_plotter(object):
     """A plotter, generating spectral diagnostics plots as proposed by M.
@@ -309,15 +306,57 @@ class tardis_kromer_plotter(object):
     @property
     def line_info(self):
         """produces list of elements to be included in the kromer plot"""
-        self.line_out_infos_within_xlims = self.line_out_infos.loc[
-            (self.line_out_infos.wavelength >= self._xlim[0])
-            & (self.line_out_infos.wavelength <= self._xlim[1])
+        # gets list of elements and number of emitted packets
+        self.last_line_interaction_out_id = self.line_out_infos
+        self.last_line_interaction_out_angstrom = self.line_out_nu.to(
+            units.Angstrom, equivalencies=units.spectral()
+        )
+
+        self.last_line_interaction_out_id[
+            "emitted_wavelength"
+        ] = self.last_line_interaction_out_angstrom
+
+        line_out_infos_within_xlims = self.last_line_interaction_out_id.loc[
+            (
+                self.last_line_interaction_out_id.emitted_wavelength
+                >= self._xlim[0]
+            )
+            & (
+                self.last_line_interaction_out_id.emitted_wavelength
+                <= self._xlim[1]
+            )
+        ]
+
+        # gets list of elements and number of absorbed packets
+        self.last_line_interaction_in_id = self.line_in_infos
+        self.last_line_interaction_in_angstrom = self.line_in_nu.to(
+            units.Angstrom, equivalencies=units.spectral()
+        )
+
+        self.last_line_interaction_in_id[
+            "emitted_wavelength"
+        ] = self.last_line_interaction_in_angstrom
+
+        line_in_infos_within_xlims = self.last_line_interaction_in_id.loc[
+            (
+                self.last_line_interaction_in_id.emitted_wavelength
+                >= self._xlim[0]
+            )
+            & (
+                self.last_line_interaction_in_id.emitted_wavelength
+                <= self._xlim[1]
+            )
         ]
 
         # this generates the 4-digit ID for all transitions in the model (e.g. Fe III line --> 2602)
         self.line_out_infos_within_xlims["ion_id"] = (
             self.line_out_infos_within_xlims["atomic_number"] * 100
             + self.line_out_infos_within_xlims["ion_number"]
+        )
+        
+        self.line_in_infos_within_xlims["ion_id"] = (
+            self.line_in_infos_within_xlims["atomic_number"] * 100
+            + self.line_in_infos_within_xlims["ion_number"]
         )
 
         # this is a list that will hold which elements should all be in the same colour.
@@ -354,21 +393,85 @@ class tardis_kromer_plotter(object):
                     species_id for list in requested_species_ids for species_id in list
                 ]
 
+        if self._species_list is not None:            
+            self._elements_in_kromer_plot_out = np.c_[
+            np.unique(
+                line_out_infos_within_xlims.atomic_number.values,
+                return_counts=True,
+            )
+        ]
+            self._elements_in_kromer_plot_in = np.c_[
+            np.unique(
+                line_in_infos_within_xlims.atomic_number.values,
+                return_counts=True,
+            )
+        ]
+            
+            self._elements_in_kromer_plot = pd.DataFrame(
+            data=np.concatenate(
+                [
+                    self._elements_in_kromer_plot_out,
+                    self._elements_in_kromer_plot_in,
+                ]
+            ),
+            columns=["atomic_no", "no_of_interactions"],
+        )
+            
+            
+        self._elements_in_kromer_plot[
+            "Total_no_of_interactions"
+        ] = self._elements_in_kromer_plot.groupby(["atomic_no"])[
+            "no_of_interactions"
+        ].transform(
+            "sum"
+        )
+        self._elements_in_kromer_plot = self._elements_in_kromer_plot.drop_duplicates(
+            subset=["atomic_no"]
+        )
+        self._elements_in_kromer_plot = np.c_[
+            self._elements_in_kromer_plot["atomic_no"],
+            self._elements_in_kromer_plot["Total_no_of_interactions"],
+        ]
         # now we are getting the list of unique values for 'ion_id' if we would like to use species. Otherwise we get unique atomic numbers
-        if self._species_list is not None:
-            self._elements_in_kromer_plot = np.c_[
-                np.unique(
-                    self.line_out_infos_within_xlims.ion_id.values,
-                    return_counts=True,
-                )
-            ]
         else:
-            self._elements_in_kromer_plot = np.c_[
-                np.unique(
-                    self.line_out_infos_within_xlims.atomic_number.values,
-                    return_counts=True,
-                )
-            ]
+            self._elements_in_kromer_plot_out = np.c_[
+            np.unique(
+                line_out_infos_within_xlims.ion_id.values,
+                return_counts=True,
+            )
+        ]
+            self._elements_in_kromer_plot_in = np.c_[
+            np.unique(
+                line_in_infos_within_xlims.ion_id.values,
+                return_counts=True,
+            )
+        ]
+            
+            self._elements_in_kromer_plot = pd.DataFrame(
+            data=np.concatenate(
+                [
+                    self._elements_in_kromer_plot_out,
+                    self._elements_in_kromer_plot_in,
+                ]
+            ),
+            columns=["ion_id", "no_of_interactions"],
+        )
+            
+            
+        self._elements_in_kromer_plot[
+            "Total_no_of_interactions"
+        ] = self._elements_in_kromer_plot.groupby(["ion_id"])[
+            "no_of_interactions"
+        ].transform(
+            "sum"
+        )
+        self._elements_in_kromer_plot = self._elements_in_kromer_plot.drop_duplicates(
+            subset=["atomic_no"]
+        )
+        self._elements_in_kromer_plot = np.c_[
+            self._elements_in_kromer_plot["ion_id"],
+            self._elements_in_kromer_plot["Total_no_of_interactions"],
+        ]
 
         # if the length of self._elements_in_kromer_plot exceeds the requested number
         # of elements to be included in the colourbar, then this if statement applies
@@ -460,8 +563,8 @@ class tardis_kromer_plotter(object):
 
         Returns
         -------
-        fig : matplotlib.figure
-            figure instance containing the plot
+        fig : matplotlib.axes
+            Axes object with the plot drawn onto it
         """
         self._ax = None
         self._pax = None
@@ -546,7 +649,7 @@ class tardis_kromer_plotter(object):
         self._generate_absorption_part()
         self._axis_handling_label_rescale()
 
-        return plt.gcf()
+        return plt.gca()
 
     def _axes_handling_preparation(self):
         """prepare the main axes; create a new axes if none exists"""

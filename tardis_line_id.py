@@ -6,13 +6,12 @@ import astropy.units as units
 import matplotlib.pyplot as plt
 from tardis_minimal_model import minimal_model
 import pandas as pd
-import csv
 
-with open('elements.csv') as f:
-    reader = csv.reader(f, skipinitialspace=True)
-    elements = dict(reader)
+elements = pd.read_csv("elements.csv", names=["chem_symbol", "atomic_no"])
+inv_elements = pd.Series(
+    elements["chem_symbol"], index=elements["atomic_no"]
+).to_dict()
 
-inv_elements = dict([(int(v), k) for k, v in elements.items()])
 
 class line_identifier(object):
     def __init__(self, mdl):
@@ -143,26 +142,32 @@ class line_identifier(object):
             tardis.__path__[0], "data", "atomic_symbols.dat"
         )
 
-        if lam_min == None:
+        if lam_min is None:
             self.lam_min = np.min(self.mdl.spectrum_wave).value
         else:
             self.lam_min = lam_min
 
-        if lam_max == None:
+        if lam_max is None:
             self.lam_max = np.max(self.mdl.spectrum_wave).value
         else:
             self.lam_max = lam_max
-
-        if nlines == None:
-            self.nlines = 20
-        else:
-            self.nlines = nlines
 
         _lines_count = self.lines_count[np.argsort(self.lines_count)][::-1]
         _lines_fraction = self.lines_count[np.argsort(self.lines_count)][
             ::-1
         ] / float(self.lines_count.sum())
         _lines_ids = self.lines_ids_unique[np.argsort(self.lines_count)][::-1]
+
+        if nlines is None:
+            if len(_lines_count) > 20:
+                self.nlines = 20
+            else:
+                self.nlines = len(_lines_count)
+        else:
+            if len(_lines_count) > nlines:
+                self.nlines = nlines
+            else:
+                self.nlines = len(_lines_count)
 
         def ion2roman(ion_value):
             """function to convert ionisation level into roman numeral

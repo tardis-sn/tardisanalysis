@@ -5,11 +5,11 @@ are provided.
 
 ## tardis_opacity.py
 
-With ``tardis_opacity.py``, the opacity within a Tardis model may be examined in
+With `tardis_opacity.py`, the opacity within a Tardis model may be examined in
 detail. To determine the line opacity, the expansion opacity formalism is used.
 
 The following figure shows the total opacity in the first and last radial shell
-in the Tardis calculation using the ``tardis_example`` setup:
+in the Tardis calculation using the `tardis_example` setup:
 
 ![image](images/tardis_opacity_example.png)
 
@@ -36,24 +36,24 @@ plt.loglog(nu_grid, chi_tot[:, -1], label = "cell #19")
 
 With the opacity_calculator, the following quantities may also be calculated:
 
-* pure bound-bound opacity per shell
-* pure Thomson opacity per shell
-* Planck-mean opacity per shell
-* Planck-mean optical depth of each shell
-* Planck-mean optical depth, integrated from the ejecta surface
+- pure bound-bound opacity per shell
+- pure Thomson opacity per shell
+- Planck-mean opacity per shell
+- Planck-mean optical depth of each shell
+- Planck-mean optical depth, integrated from the ejecta surface
 
 ## tardis_kromer_plot.py
 
-With ``tardis_kromer_plot.py``, the importance of the different chemical
+With `tardis_kromer_plot.py`, the importance of the different chemical
 elements for the formation of the synthetic spectra may be illustrated. This
 type of illustration has been developed by M. Kromer.
 
 **Important:** The virtual packet logging capability must be active in order to
 use this tool to generate Kromer plots from the virtual packet population.
-Thus, Tardis must be compiled with the flag ``--with-vpacket-logging``.
+Thus, Tardis must be compiled with the flag `--with-vpacket-logging`.
 
 The following figure shows such a "Kromer-type" plot for a Tardis calculation
-using the ``tardis_example`` setup:
+using the `tardis_example` setup:
 
 ![image](images/kromer_plot_example.png)
 
@@ -76,26 +76,30 @@ plotter = tkp.tardis_kromer_plotter(minmodel, mode="virtual")
 plotter.generate_plot(xlim=(3000,1e4), twinx=True)
 ```
 
+> NOTE: When using this in non-interactive mode (e.g. from a python script),
+> you will also need to call `plt.show()` after the above code to display the
+> generated plot.
+
 If a large amount of elements are cluttering the colormap then a flag
-``nelements`` can be included, e.g.
-``plotter.generate_plot(xlim=(3000,1e4), twinx=True, nelements=10)``. This
+`nelements` can be included, e.g.
+`plotter.generate_plot(xlim=(3000,1e4), twinx=True, nelements=10)`. This
 command will make the plot only include the n elements associated with the most
 line transitions; if not specified, then all elements in the model, with
-at least 1 transition, are included. If the flag ``nelements`` is set, it is
+at least 1 transition, are included. If the flag `nelements` is set, it is
 possible to wind up with a Kromer plot with colourless regions of absorption
-and/or emission. This is a result of the value of ``nelements`` being too low,
+and/or emission. This is a result of the value of `nelements` being too low,
 causing elements that have significant contributions to the spectrum to be
 removed. A simple fix to this is to increase the user-specified value of
-``nelements``.
+`nelements`.
 
 A Kromer-type plot for the real packet population may be generated analogously
-by replacing ``mode='virtual'`` with ``mode='real'`` in the above example.:
+by replacing `mode='virtual'` with `mode='real'` in the above example.:
 
 ![image](images/kromer_plot_example_real.png)
 
 ## compute_features.py
 
-With ``compute_features.py``, one can compute the pEW, depth and velocity
+With `compute_features.py`, one can compute the pEW, depth and velocity
 of selected spectral features. The routine that define the features and
 the calculations are based on [Silverman+ 2012](http://adsabs.harvard.edu/abs/2012MNRAS.425.1819S).
 Uncertainties are computed with a simple Monte Carlo routine based on [Liu+ 2016](http://adsabs.harvard.edu/abs/2016ApJ...827...90L).
@@ -111,7 +115,7 @@ import tardis
 import compute_features as cp
 
 sim = tardis.run_tardis('./docu/inputs/loglum-8.538.yml',
-                        './docu/inputs/kurucz_cd23_chianti_H_He.h5') 
+                        './docu/inputs/kurucz_cd23_chianti_H_He.h5')
 
 #Get wavelength and flux values as arrays.
 wavelength = sim.runner.spectrum_virtual.wavelength[::-1].value
@@ -128,7 +132,7 @@ D = cp.Compute_Uncertainty(D=D, smoothing_window=17,
 #Make spectrum plot where features are highlighted.
 cp.Plot_Spectra(D, './docu/images/example_spectrum.png',
                 show_fig=True, save_fig=True)
-                
+
 print 'pEW of main Si feature (f7) = ', D['pEW_f7'], '+-', D['pEW_unc_f7']
 print 'Velocity of weak Si feature (f6) = ', D['velocity_f6'], '+-',\
       D['velocity_unc_f6']
@@ -136,11 +140,11 @@ print 'Velocity of weak Si feature (f6) = ', D['velocity_f6'], '+-',\
 
 ## tardis_line_id.py
 
-With ``tardis_line_id.py``, one can determine the transition(s) that are
+With `tardis_line_id.py`, one can determine the transition(s) that are
 influencing the spectrum most, within a user-specified range.
 
 The following figure shows such an example bar chart for a Tardis calculation
-using the ``tardis_example`` setup:
+using the `tardis_example` setup:
 
 ![image](images/line_ids_example.png)
 
@@ -161,16 +165,3 @@ plotter = tlid.line_identifier(minmodel)
 # generate plot
 plotter.plot_summary(lam_min=4000, lam_max=7000, nlines=20, output_filename='output_barchart_info.txt')
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
