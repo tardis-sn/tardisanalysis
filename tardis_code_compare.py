@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import astropy.units as units
 
-from pyne import nucname
+from radioactivedecay.utils import elem_to_Z
 
 
 class CodeComparisonOutputFile(object):
@@ -141,7 +141,7 @@ class IonFracOutputFile(CodeComparisonOutputFile):
         self.model_name = model_name
         self.data_first_column = data_first_column
         self.species = species
-        self.species_num = nucname.name_zz[species]
+        self.species_num = elem_to_Z(species)
         ion_columns = ' '.join(
             [''.join([species, str(i)]) for i in range(self.num_stages)]
         )
@@ -181,7 +181,7 @@ class IonFracOutputFile(CodeComparisonOutputFile):
     @classmethod
     def from_simulations(cls, simulations, model_name, species='Ca',
                          num_stages=8):
-        species_num = nucname.name_zz[species]
+        species_num = elem_to_Z(species)
         times = cls.get_times_from_simulations(simulations)
         data_first_column = cls.get_data_first_column(simulations)
         data_tables = []
