@@ -102,7 +102,7 @@ def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5
 
     include_from_runner_ = {}
     include_from_spectrum_ = {}
-    if mode == "virtual" or mode == "both":
+    if mode in ["virtual", "both"]:
         include_from_runner_.update(
             {'virt_packet_last_interaction_type': None,
              'virt_packet_last_line_interaction_in_id': None,
@@ -110,9 +110,8 @@ def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5
              'virt_packet_last_interaction_in_nu': None,
              'virt_packet_nus': None,
              'virt_packet_energies': None})
-        include_from_spectrum_.update(
-            {'luminosity_density_virtual': _save_spectrum_virtual})
-    if mode == "real" or mode == "both":
+        include_from_spectrum_['luminosity_density_virtual'] = _save_spectrum_virtual
+    if mode in ["real", "both"]:
         include_from_runner_.update(
             {'last_interaction_type': None,
              'last_line_interaction_in_id': None,
@@ -120,8 +119,7 @@ def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5
              'last_interaction_in_nu': None,
              'output_nu': None,
              'output_energy': None})
-        include_from_spectrum_.update(
-            {'luminosity_density': _save_spectrum_real})
+        include_from_spectrum_['luminosity_density'] = _save_spectrum_real
 
     include_from_atom_data_ = {'lines': None}
     include_from_model_in_hdf5 = {'runner': include_from_runner_,
@@ -137,7 +135,7 @@ def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5
         hdf_store = buffer_or_fname
     else:
         raise IOError('Please specify either a filename or an HDFStore')
-    print('Writing to path %s' % path)
+    print(f'Writing to path {path}')
 
     def _get_hdf5_path(path, property_name):
         return os.path.join(path, property_name)
@@ -174,9 +172,11 @@ def store_data_for_minimal_model(simulation, buffer_or_fname="minimal_model.hdf5
                         include_from_model_in_hdf5[key][subkey](
                             subkey, os.path.join(path, key), hdf_store)
                     else:
-                        print('Can not save %s' % str(os.path.join(path, key, subkey)))
+                        print(f'Can not save {str(os.path.join(path, key, subkey))}')
             except:
-                print('An error occurred while dumping %s to HDF.' % str(os.path.join(path, key)))
+                print(
+                    f'An error occurred while dumping {str(os.path.join(path, key))} to HDF.'
+                )
 
     hdf_store.flush()
     hdf_store.close()
@@ -231,50 +231,48 @@ class minimal_model(object):
 
         self.time_of_simulation = simulation.runner.time_of_simulation
         self.lines = \
-            simulation.plasma.atomic_data.lines.reset_index().set_index(
+                simulation.plasma.atomic_data.lines.reset_index().set_index(
                 'line_id')
         self.R_phot = (simulation.model._velocity[0] *
                        simulation.model.time_explosion).to("cm")
         self.t_inner = simulation.model.t_inner
 
-        if self.mode == "virtual":
-
-            self.last_interaction_type = \
-                simulation.runner.virt_packet_last_interaction_type
-            self.last_line_interaction_in_id = \
-                simulation.runner.virt_packet_last_line_interaction_in_id
-            self.last_line_interaction_out_id = \
-                simulation.runner.virt_packet_last_line_interaction_out_id
-            self.last_interaction_in_nu = \
-                simulation.runner.virt_packet_last_interaction_in_nu
-            self.packet_nus = \
-                simulation.runner.virt_packet_nus * units.Hz
-            self.packet_energies = \
-                simulation.runner.virt_packet_energies * units.erg
-            self.spectrum_wave = \
-                simulation.runner.spectrum_virtual.wavelength
-            self.spectrum_luminosity = \
-                simulation.runner.spectrum_virtual.luminosity_density_lambda
-        elif self.mode == "real":
-
+        if self.mode == "real":
             esc_mask = simulation.runner.output_energy >= 0
 
             self.last_interaction_type = \
-                simulation.runner.last_interaction_type[esc_mask]
+                    simulation.runner.last_interaction_type[esc_mask]
             self.last_line_interaction_in_id = \
-                simulation.runner.last_line_interaction_in_id[esc_mask]
+                    simulation.runner.last_line_interaction_in_id[esc_mask]
             self.last_line_interaction_out_id = \
-                simulation.runner.last_line_interaction_out_id[esc_mask]
+                    simulation.runner.last_line_interaction_out_id[esc_mask]
             self.last_interaction_in_nu = \
-                simulation.runner.last_interaction_in_nu[esc_mask]
+                    simulation.runner.last_interaction_in_nu[esc_mask]
             self.packet_nus = \
-                simulation.runner.output_nu[esc_mask]
+                    simulation.runner.output_nu[esc_mask]
             self.packet_energies = \
-                simulation.runner.output_energy[esc_mask]
+                    simulation.runner.output_energy[esc_mask]
             self.spectrum_wave = \
-                simulation.runner.spectrum.wavelength
+                    simulation.runner.spectrum.wavelength
             self.spectrum_luminosity = \
-                simulation.runner.spectrum.luminosity_density_lambda
+                    simulation.runner.spectrum.luminosity_density_lambda
+        elif self.mode == "virtual":
+            self.last_interaction_type = \
+                    simulation.runner.virt_packet_last_interaction_type
+            self.last_line_interaction_in_id = \
+                    simulation.runner.virt_packet_last_line_interaction_in_id
+            self.last_line_interaction_out_id = \
+                    simulation.runner.virt_packet_last_line_interaction_out_id
+            self.last_interaction_in_nu = \
+                    simulation.runner.virt_packet_last_interaction_in_nu
+            self.packet_nus = \
+                    simulation.runner.virt_packet_nus * units.Hz
+            self.packet_energies = \
+                    simulation.runner.virt_packet_energies * units.erg
+            self.spectrum_wave = \
+                    simulation.runner.spectrum_virtual.wavelength
+            self.spectrum_luminosity = \
+                    simulation.runner.spectrum_virtual.luminosity_density_lambda
         else:
             raise ValueError
         self.last_interaction_in_nu = self.last_interaction_in_nu * units.Hz
@@ -297,60 +295,59 @@ class minimal_model(object):
             raise IOError('Please specify either a filename or an HDFStore')
 
         self.time_of_simulation = \
-            hdf_store["/configuration"].time_of_simulation
+                hdf_store["/configuration"].time_of_simulation
         self.lines = hdf_store["/atom_data/lines"].reset_index().set_index(
             'line_id')
         self.R_phot = hdf_store["/configuration"].R_photosphere
         self.t_inner = hdf_store["/configuration"].t_inner
 
-        if self.mode == "virtual":
-
-            self.last_interaction_type = \
-                hdf_store["/runner/virt_packet_last_interaction_type"]
-            self.last_line_interaction_in_id = \
-                hdf_store["/runner/virt_packet_last_line_interaction_in_id"]
-            self.last_line_interaction_out_id = \
-                hdf_store["/runner/virt_packet_last_line_interaction_out_id"]
-            self.last_interaction_in_nu = \
-                hdf_store["/runner/virt_packet_last_interaction_in_nu"]
-            self.packet_nus = \
-                hdf_store["/runner/virt_packet_nus"]
-            self.packet_energies = \
-                hdf_store["/runner/virt_packet_energies"]
-            self.spectrum_wave = \
-                hdf_store["/spectrum/luminosity_density_virtual"]["wave"]
-            self.spectrum_luminosity = \
-                hdf_store["/spectrum/luminosity_density_virtual"]["flux"]
-
-        elif self.mode == "real":
+        if self.mode == "real":
             esc_mask = hdf_store["/runner/output_energy"] >= 0
 
             self.last_interaction_type = \
-                hdf_store["/runner/last_interaction_type"][esc_mask]
+                    hdf_store["/runner/last_interaction_type"][esc_mask]
             self.last_line_interaction_in_id = \
-                hdf_store["/runner/last_line_interaction_in_id"][esc_mask]
+                    hdf_store["/runner/last_line_interaction_in_id"][esc_mask]
             self.last_line_interaction_out_id = \
-                hdf_store["/runner/last_line_interaction_out_id"][esc_mask]
+                    hdf_store["/runner/last_line_interaction_out_id"][esc_mask]
             self.last_interaction_in_nu = \
-                hdf_store["/runner/last_interaction_in_nu"][esc_mask]
+                    hdf_store["/runner/last_interaction_in_nu"][esc_mask]
             self.packet_nus = \
-                hdf_store["/runner/output_nu"][esc_mask]
+                    hdf_store["/runner/output_nu"][esc_mask]
             self.packet_energies = \
-                hdf_store["/runner/output_energy"][esc_mask]
+                    hdf_store["/runner/output_energy"][esc_mask]
             self.spectrum_wave = \
-                hdf_store["/spectrum/luminosity_density"]["wave"]
+                    hdf_store["/spectrum/luminosity_density"]["wave"]
             self.spectrum_luminosity = \
-                hdf_store["/spectrum/luminosity_density"]["flux"]
+                    hdf_store["/spectrum/luminosity_density"]["flux"]
+        elif self.mode == "virtual":
+            self.last_interaction_type = \
+                    hdf_store["/runner/virt_packet_last_interaction_type"]
+            self.last_line_interaction_in_id = \
+                    hdf_store["/runner/virt_packet_last_line_interaction_in_id"]
+            self.last_line_interaction_out_id = \
+                    hdf_store["/runner/virt_packet_last_line_interaction_out_id"]
+            self.last_interaction_in_nu = \
+                    hdf_store["/runner/virt_packet_last_interaction_in_nu"]
+            self.packet_nus = \
+                    hdf_store["/runner/virt_packet_nus"]
+            self.packet_energies = \
+                    hdf_store["/runner/virt_packet_energies"]
+            self.spectrum_wave = \
+                    hdf_store["/spectrum/luminosity_density_virtual"]["wave"]
+            self.spectrum_luminosity = \
+                    hdf_store["/spectrum/luminosity_density_virtual"]["flux"]
+
         else:
             raise ValueError
 
         self.last_interaction_type = self.last_interaction_type.values
         self.last_line_interaction_in_id = \
-            self.last_line_interaction_in_id.values
+                self.last_line_interaction_in_id.values
         self.last_line_interaction_out_id = \
-            self.last_line_interaction_out_id.values
+                self.last_line_interaction_out_id.values
         self.last_interaction_in_nu = \
-            self.last_interaction_in_nu.values * units.Hz
+                self.last_interaction_in_nu.values * units.Hz
         self.packet_nus = self.packet_nus.values * units.Hz
         self.packet_energies = self.packet_energies.values * units.erg
         self.spectrum_wave = self.spectrum_wave.values

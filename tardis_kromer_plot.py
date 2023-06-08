@@ -356,38 +356,33 @@ class tardis_kromer_plotter(object):
         # this reads in the species specified by user and generates the 4-digit
         # ID keys for them
         if self._species_list is not None:
-            # create a list of the ions ids requested by species_list
-            requested_species_ids = []
-            # check if there are any digits in the species list. If there are
-            # then exit
-            # species_list should only contain species in the Roman numeral
-            # format, e.g. Si II, and each ion must contain a space
-            if any(char.isdigit() for char in " ".join(self._species_list)) == True:
+            if any(char.isdigit() for char in " ".join(self._species_list)):
                 raise ValueError(
                     "All species must be in Roman numeral form, e.g. Si II"
                 )
-            else:
-                # go through each of the request species. Check whether it is
-                # an element or ion (ions have spaces). If it is an element,
-                # add all possible ions to the ions list. Otherwise just add
-                # the requested ion
-                for species in self._species_list:
-                    if " " in species:
-                        requested_species_ids.append(
-                            [
-                                species_string_to_tuple(species)[0] * 100
-                                + species_string_to_tuple(species)[1]
-                            ]
-                        )
-                    else:
-                        atomic_number = elements.loc[elements['chem_symbol'] == species.lower(), 'atomic_no'].values[0]
-                        requested_species_ids.append(
-                            [atomic_number * 100 + i for i in np.arange(atomic_number)]
-                        )
-                        self.keep_colour.append(atomic_number)
-                self.requested_species_ids = [
-                    species_id for list in requested_species_ids for species_id in list
-                ]
+            # create a list of the ions ids requested by species_list
+            requested_species_ids = []
+            # go through each of the request species. Check whether it is
+            # an element or ion (ions have spaces). If it is an element,
+            # add all possible ions to the ions list. Otherwise just add
+            # the requested ion
+            for species in self._species_list:
+                if " " in species:
+                    requested_species_ids.append(
+                        [
+                            species_string_to_tuple(species)[0] * 100
+                            + species_string_to_tuple(species)[1]
+                        ]
+                    )
+                else:
+                    atomic_number = elements.loc[elements['chem_symbol'] == species.lower(), 'atomic_no'].values[0]
+                    requested_species_ids.append(
+                        [atomic_number * 100 + i for i in np.arange(atomic_number)]
+                    )
+                    self.keep_colour.append(atomic_number)
+            self.requested_species_ids = [
+                species_id for list in requested_species_ids for species_id in list
+            ]
 
         # now we are getting the list of unique values for 'ion_id' if we would
         # like to use species. Otherwise we get unique atomic numbers
@@ -499,15 +494,19 @@ class tardis_kromer_plotter(object):
                     second_ion_numeral = roman_to_int(
                         species.split(" ")[-1].split("-")[-1]
                     )
-                    for i in np.arange(first_ion_numeral, second_ion_numeral + 1):
-                        full_species_list.append(element + " " + int_to_roman(i))
+                    full_species_list.extend(
+                        element + " " + int_to_roman(i)
+                        for i in np.arange(
+                            first_ion_numeral, second_ion_numeral + 1
+                        )
+                    )
                 else:
                     full_species_list.append(species)
             self._species_list = full_species_list
         else:
             self._species_list = None
 
-        
+
         if xlim is None:
             self._xlim = [
                 np.min(self.mdl.spectrum_wave).value,
@@ -516,13 +515,7 @@ class tardis_kromer_plotter(object):
         else:
             self._xlim = xlim
 
-        if bins is None:
-            self._bins = self.mdl.spectrum_wave[::-1]
-        else:
-            self._bins = bins
-
-            
-            
+        self._bins = self.mdl.spectrum_wave[::-1] if bins is None else bins
         # get the elements/species to be included in the plot
         self._elements_in_kromer_plot = self.line_info
 
@@ -532,7 +525,7 @@ class tardis_kromer_plotter(object):
         # of unique elements that appear in the model
         if nelements is None and species_list is None:
             self._nelements = len(np.unique(self.line_in_and_out_infos_within_xlims.atomic_number.values))
-        elif nelements is None and species_list is not None:
+        elif nelements is None:
             # if species_list has been specified, then the number of elements
             # to be included is set to the length of that list
             self._nelements = len(self._species_list)
@@ -591,9 +584,9 @@ class tardis_kromer_plotter(object):
                     labels.append(species)
             self._nelements = len(labels)
 
-                
-                
-                
+
+
+
         self._axes_handling_preparation()
         self._generate_emission_part()
         self._generate_photosphere_part()
@@ -615,18 +608,13 @@ class tardis_kromer_plotter(object):
         """prepare the axes for the absorption part of the Kromer plot
         according to the twinx value"""
 
-        if self.twinx:
-            self._pax = self._ax.twinx()
-        else:
-            self._pax = self._ax
+        self._pax = self._ax.twinx() if self.twinx else self._ax
 
     def _generate_emission_part(self):
         """generate the emission part of the Kromer plot"""
 
         lams = [self.lam_noint, self.lam_escat]
         weights = [self.weights_noint, self.weights_escat]
-        colors = ["black", "grey"]
-
         # if species_list is entered, the ion_id will be used to determine the
         # colours, etc
         if self._species_list is not None:
@@ -680,8 +668,7 @@ class tardis_kromer_plotter(object):
 
         lams.append(other_species_lams)
         weights.append(other_species_weights)
-        colors.append("silver")
-
+        colors = ["black", "grey", "silver"]
         ii = 0
         # this is a variable that will allow for situations where elements and
         # ions are requested in the same list this will ensure that any ions
@@ -700,23 +687,16 @@ class tardis_kromer_plotter(object):
             # contribution is added here as a colour to the plot
             if zi in self._elements_in_kromer_plot[:, 0]:
                 # if this is the first ion, don't update the colour
-                if (previous_atomic_number == 0):
+                if (
+                    previous_atomic_number != 0
+                    and atomic_number in self.keep_colour
+                    and previous_atomic_number == atomic_number
+                    or (previous_atomic_number == 0)
+                ):
                     ii = ii
-                    previous_atomic_number = atomic_number
-                elif atomic_number in self.keep_colour:
-                    # if this ion is grouped into an element, check whether
-                    # this is the first ion of that element to occur if it is,
-                    # then update the colour. If it isn't then don't update the
-                    # colour
-                    if previous_atomic_number == atomic_number:
-                        ii = ii
-                        previous_atomic_number = atomic_number
-                    else:
-                        ii = ii +1
-                        previous_atomic_number = atomic_number
                 else:
-                    ii = ii + 1
-                    previous_atomic_number = atomic_number
+                    ii = ii +1
+                previous_atomic_number = atomic_number
                 if self._species_list is not None:
                     mask = (
                         self.line_out_infos.atomic_number.values == atomic_number
@@ -728,10 +708,10 @@ class tardis_kromer_plotter(object):
                 weights.append(self.line_out_L[mask] / self.mdl.time_of_simulation)
                 colors.append(self.cmap(float(ii) / float(self._nelements)))
 
-        Lnorm = 0
-        for w, lam in zip(weights, lams):
-            Lnorm += np.sum(w[(lam >= self.bins[0]) * (lam <= self.bins[-1])])
-
+        Lnorm = sum(
+            np.sum(w[(lam >= self.bins[0]) * (lam <= self.bins[-1])])
+            for w, lam in zip(weights, lams)
+        )
         lams = [tmp_lam.value for tmp_lam in lams]
         weights = [tmp_wt.value for tmp_wt in weights]
         ret = self.ax.hist(

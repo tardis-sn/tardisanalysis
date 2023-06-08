@@ -201,11 +201,7 @@ class original_model(object):
         Z = zmax. The proton number serves as dictionary key
         """
         if self._stable_abundances is None:
-            tmp = {}
-
-            for i in xrange(zmax):
-                z = i+1
-                tmp[z] = np.zeros(self.nzones)
+            tmp = {i+1: np.zeros(self.nzones) for i in xrange(zmax)}
             self._stable_abundances = tmp
 
         return self._stable_abundances
@@ -286,17 +282,14 @@ class w7_model(original_model):
             Name of the hydrodynamics file of the W7 model
         """
 
-        f = open(fname, "r")
+        with open(fname, "r") as f:
+            # read header
+            buffer = f.readline().rsplit()
+            self.t = float(buffer[2]) * units.s
+            buffer = f.readline()
 
-        # read header
-        buffer = f.readline().rsplit()
-        self.t = float(buffer[2]) * units.s
-        buffer = f.readline()
-
-        # read main data block
-        data = np.loadtxt(f)
-        f.close()
-
+            # read main data block
+            data = np.loadtxt(f)
         self.ro = data[:, 2] * units.cm
         self.ri = np.insert(self.ro, 0, 0 * units.cm)[:-1]
         self.rho = data[:, 3] * units.g / units.cm**3
@@ -310,10 +303,8 @@ class w7_model(original_model):
             Name of the nucleosynthesis file of the W7 model
         """
 
-        f = open(fname, "r")
-        data = np.loadtxt(f, skiprows=1)
-        f.close()
-
+        with open(fname, "r") as f:
+            data = np.loadtxt(f, skiprows=1)
         # the file contains abundances for elements from Z=1 to Z=32 (Ge).
         for i in xrange(np.max([zmax, 32])):
             self.stable_abundances[i+1] = data[:, i]
@@ -623,17 +614,16 @@ class to_tardis_mapper(object):
             name of the Tardis specific structure file (default
             'tardis_abundances.dat')
         """
-        f = open(fname, "w")
-        f.write("# index Z=1 - Z={:d}\n".format(zmax))
-        X = np.zeros((zmax+1, self.N_interp+1))
+        with open(fname, "w") as f:
+            f.write("# index Z=1 - Z={:d}\n".format(zmax))
+            X = np.zeros((zmax+1, self.N_interp+1))
 
-        X[0, :] = np.arange(self.N_interp+1)
-        X[1:, 1:] = np.array(
-            [self.abundances_interp[z] for z in xrange(1, zmax+1)])
-        X[1:, 0] = X[1:, 1]
+            X[0, :] = np.arange(self.N_interp+1)
+            X[1:, 1:] = np.array(
+                [self.abundances_interp[z] for z in xrange(1, zmax+1)])
+            X[1:, 0] = X[1:, 1]
 
-        np.savetxt(f, X.T, fmt=["% 4d"] + ["%.7e" for i in xrange(1, zmax+1)])
-        f.close()
+            np.savetxt(f, X.T, fmt=["% 4d"] + ["%.7e" for _ in xrange(1, zmax+1)])
 
     def _write_tardis_density_file(self, fname="tardis_densities.dat"):
         """Write specific abundance file for Tardis
@@ -644,15 +634,12 @@ class to_tardis_mapper(object):
             name of the Tardis specific structure file (default
             'tardis_densities.dat')
         """
-        f = open(fname, "w")
-
-        f.write("{:f} {:s}\n".format(self.t.to("day").value, "day"))
-        f.write("# index velocity (km/s) density (g/cm^3)\n")
-        X = np.array([np.arange(self.N_interp+1),
-                     np.insert(self.v_interp_r.to("km/s"), 0,
-                               self.v_interp_l.to("km/s")[0]).value,
-                     np.insert(self.rho_interp.to("g/cm^3"), 0,
-                               self.rho_interp.to("g/cm^3")[0]).value]).T
-        np.savetxt(f, X, fmt=["% 4d", "% 9.3f", "%.7e"])
-
-        f.close()
+        with open(fname, "w") as f:
+            f.write("{:f} {:s}\n".format(self.t.to("day").value, "day"))
+            f.write("# index velocity (km/s) density (g/cm^3)\n")
+            X = np.array([np.arange(self.N_interp+1),
+                         np.insert(self.v_interp_r.to("km/s"), 0,
+                                   self.v_interp_l.to("km/s")[0]).value,
+                         np.insert(self.rho_interp.to("g/cm^3"), 0,
+                                   self.rho_interp.to("g/cm^3")[0]).value]).T
+            np.savetxt(f, X, fmt=["% 4d", "% 9.3f", "%.7e"])

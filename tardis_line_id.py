@@ -159,16 +159,9 @@ class line_identifier(object):
         _lines_ids = self.lines_ids_unique[np.argsort(self.lines_count)][::-1]
 
         if nlines is None:
-            if len(_lines_count) > 20:
-                self.nlines = 20
-            else:
-                self.nlines = len(_lines_count)
+            self.nlines = 20 if len(_lines_count) > 20 else len(_lines_count)
         else:
-            if len(_lines_count) > nlines:
-                self.nlines = nlines
-            else:
-                self.nlines = len(_lines_count)
-
+            self.nlines = nlines if len(_lines_count) > nlines else len(_lines_count)
         def ion2roman(ion_value):
             """function to convert ionisation level into roman numeral
             notation"""
@@ -229,9 +222,8 @@ class line_identifier(object):
                 }
             )
 
-            f = open(output_filename, "w")
-            f.write(
-                f"# Line Transitions in Wavelength Range {self.lam_min.value:.1f} - {self.lam_max.value:.1f} Angstroms\n"
-            )
-            dataframe.to_csv(f, sep="\t", index=False)
-            f.close()
+            with open(output_filename, "w") as f:
+                f.write(
+                    f"# Line Transitions in Wavelength Range {self.lam_min.value:.1f} - {self.lam_max.value:.1f} Angstroms\n"
+                )
+                dataframe.to_csv(f, sep="\t", index=False)

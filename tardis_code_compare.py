@@ -12,7 +12,7 @@ class CodeComparisonOutputFile(object):
     def __init__(self, times, data_table, model_name, data_first_column):
         self.times = times
         self.data_table = data_table
-        if not data_first_column is None:
+        if data_first_column is not None:
             self.data_table.insert(0, 'wav', data_first_column)
         self.model_name = model_name
 
@@ -22,14 +22,13 @@ class CodeComparisonOutputFile(object):
 
     @property
     def fname(self):
-        return self.data_type + '_{}_tardis.txt'.format(self.model_name)
+        return self.data_type + f'_{self.model_name}_tardis.txt'
 
     def write(self, dest='.'):
         path = os.path.join(dest, self.fname)
         with open(path, mode='w+') as f:
-            f.write('#NTIMES: {}\n'.format(len(self.times)))
-            f.write('#N{}: {}\n'.format(self.first_column_name,
-                                        len(self.data_table)))
+            f.write(f'#NTIMES: {len(self.times)}\n')
+            f.write(f'#N{self.first_column_name}: {len(self.data_table)}\n')
             f.write('#TIMES[d]: ' + self.times_str + '\n')
             f.write(self.column_description + '\n')
             self.data_table.to_csv(f, index=False, float_format='%.6E',
@@ -37,10 +36,9 @@ class CodeComparisonOutputFile(object):
 
     @staticmethod
     def get_times_from_simulations(simulations):
-        times = [
+        return [
             sim.model.time_explosion.to(units.day).value for sim in simulations
         ]
-        return times
 
     @classmethod
     def from_simulations(cls, simulations, model_name):
@@ -152,20 +150,19 @@ class IonFracOutputFile(CodeComparisonOutputFile):
     @property
     def fname(self):
         fname = self.data_type
-        fname += '_{}_{}_tardis.txt'.format(self.species.lower(),
-                                            self.model_name)
+        fname += f'_{self.species.lower()}_{self.model_name}_tardis.txt'
         return fname
 
     def write(self, dest='.'):
         path = os.path.join(dest, self.fname)
         with open(path, mode='w+') as f:
-            f.write('#NTIMES: {}\n'.format(len(self.times)))
-            f.write('#NSTAGES: {}\n'.format(self.num_stages))
+            f.write(f'#NTIMES: {len(self.times)}\n')
+            f.write(f'#NSTAGES: {self.num_stages}\n')
             f.write('#TIMES[d]: ' + self.times_str + '\n')
             for i, time in enumerate(self.times):
                 vel_mid = self.data_first_column[i]
-                f.write('#\n#TIME: {}\n'.format(time))
-                f.write('#NVEL: {}\n'.format(len(vel_mid)))
+                f.write(f'#\n#TIME: {time}\n')
+                f.write(f'#NVEL: {len(vel_mid)}\n')
                 ion_df = self.data_table[i]
                 ion_df.insert(0, 'vel_mid', vel_mid)
                 f.write(self.column_description + '\n')
@@ -174,9 +171,9 @@ class IonFracOutputFile(CodeComparisonOutputFile):
 
     @staticmethod
     def get_data_first_column(simulations):
-        v = [sim.model.v_middle.to(units.km / units.s).value
-             for sim in simulations]
-        return v
+        return [
+            sim.model.v_middle.to(units.km / units.s).value for sim in simulations
+        ]
 
     @classmethod
     def from_simulations(cls, simulations, model_name, species='Ca',
@@ -204,12 +201,12 @@ class PhysicalPropertyOutputFile(CodeComparisonOutputFile):
     def write(self, dest='.'):
         path = os.path.join(dest, self.fname)
         with open(path, mode='w+') as f:
-            f.write('#NTIMES: {}\n'.format(len(self.times)))
+            f.write(f'#NTIMES: {len(self.times)}\n')
             f.write('#TIMES[d]: ' + self.times_str + '\n')
             for i, time in enumerate(self.times):
                 df = self.data_table[i]
-                f.write('#\n#TIME: {}\n'.format(time))
-                f.write('#NVEL: {}\n'.format(len(df)))
+                f.write(f'#\n#TIME: {time}\n')
+                f.write(f'#NVEL: {len(df)}\n')
                 f.write(self.column_description + '\n')
                 df.to_csv(f, index=False, float_format='%.6E',
                           sep=' ', header=False)
